@@ -1,0 +1,1056 @@
+/* Mango Market. Juicy Pop UI over the 3D plaza: cream cards, mango accents,
+   chunky rounded buttons. Hyper-legible: one face, few sizes (18/24/34/46),
+   high contrast ink on cream. iPad first, touch first. */
+
+:root {
+  --mango:  #FFAD1F;
+  --mango2: #F58A2E;
+  --mango-deep: #B45309; /* price text: mango family at 4.5:1+ on cream */
+  --red:    #F04E3E;
+  --leaf:   #3E8E4E;
+  --sky:    #8ED4F2;
+  --cream:  #FFF6EA;
+  --ink:    #2B2118;
+  --paper:  #FFFDF4;
+  --shadow: 0 6px 0 rgba(43, 33, 24, 0.18);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+.hidden { display: none !important; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--sky);
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+#world {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ---- HUD ---- */
+#hud {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  left: 14px;
+  right: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  z-index: 10;
+}
+
+.chip {
+  font: inherit;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--ink);
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  padding: 8px 18px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  /* Chip words say what each chip is, so a chip must never wrap its own
+     label into a column; the HUD wraps to a second row instead. */
+  white-space: nowrap;
+}
+
+/* The wallet is a SIGN, not a button. It is the most saturated thing on a
+   fresh HUD, so it is the first thing a young player taps, and it has no tap action
+   (its 2.5s parent hold must stay undiscoverable). Flat and cream: the same
+   raised-versus-flat rule the money uses, and mango-plus-raised is now the
+   goal pill's "do this now" signal, which must mean exactly one thing. */
+#walletChip { background: var(--paper); box-shadow: none; cursor: default; }
+#listBtn { margin-left: auto; }
+
+/* Phone: two tidy rows rather than one clipped one. Padding keeps every chip
+   over the 44pt touch floor; at 7px they measured 43px and a near miss on a
+   chip edge landed on the canvas and started a walk she never asked for. */
+@media (max-width: 560px) {
+  #hud { gap: 8px; }
+  .chip { font-size: 19px; padding: 10px 14px; }
+  #listBtn { margin-left: 0; }
+}
+
+.chip.pulse { animation: pulse 0.5s ease 2; }
+@keyframes pulse { 50% { transform: scale(1.12); } }
+
+/* Tappable chips press like every other button (clarity review). The
+   wallet chip stays still: it is a readout, and its 2.5s parent hold must
+   not advertise itself. */
+.chip:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(43, 33, 24, 0.18); }
+#walletChip:active { transform: none; box-shadow: none; cursor: default; }
+
+/* A chip that cannot act right now looks asleep instead of lying about it.
+   Never the disabled attribute: it swallows taps and reads as a frozen game.
+   The :active half is the load-bearing one, since pressing down under her
+   finger and then doing nothing is the exact lie being fixed. */
+.chip.asleep { opacity: 0.45; box-shadow: none; }
+.chip.asleep:active { transform: none; box-shadow: none; }
+
+/* ---- the goal pill ----
+   One line that always says what to do next. It rides inside #hud as a
+   full-width flex row so it lands under the chips with no magic offsets,
+   and never collides with the bottom-centre "Back outside" button or a
+   rising sheet the way a bottom-anchored pill did. Mango fill and a slow
+   nod separate it from the chips: chips report, this one instructs. */
+.goal {
+  font: inherit;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--ink);
+  background: var(--mango);
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  padding: 9px 22px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  flex-basis: 100%;
+  align-self: center;
+  width: fit-content;
+  margin: 2px auto 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+  animation: goalNod 3.2s ease-in-out infinite;
+}
+
+.goal:active {
+  transform: translateY(3px);
+  box-shadow: 0 3px 0 rgba(43, 33, 24, 0.18);
+  animation: none;
+}
+
+@keyframes goalNod { 4%, 12% { transform: translateY(-4px); } }
+
+/* Progress toward the next chunk of town: filled stars for sessions done.
+   The same glyphs appear on the stand summary at stars-big. */
+.goal-stars { font-size: 21px; letter-spacing: 2px; color: var(--mango-deep); }
+
+.stars-big {
+  font-size: 38px;
+  letter-spacing: 6px;
+  color: var(--mango2);
+  margin: 6px 0 2px;
+}
+
+@media (max-width: 560px) {
+  .goal { font-size: 19px; padding: 8px 16px; gap: 8px; }
+  .goal-stars { font-size: 17px; }
+}
+
+/* Room mode's one button: big, centered, unmissable. */
+.room-exit {
+  position: fixed;
+  left: 50%;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 10;
+  background: var(--mango);
+}
+
+/* ---- sheets (quest, wishlist, shelf) ---- */
+.sheet {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0;
+  width: min(720px, 100%);
+  max-height: 62%;
+  background: var(--cream);
+  border: 3px solid var(--ink);
+  border-bottom: none;
+  border-radius: 26px 26px 0 0;
+  padding: 16px 18px calc(18px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  z-index: 20;
+  box-shadow: 0 -8px 30px rgba(43, 33, 24, 0.25);
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* Pinned: the close button must never scroll out of reach. */
+  position: sticky;
+  top: -16px;
+  z-index: 2;
+  background: var(--cream);
+  margin: -16px -18px 12px;
+  padding: 16px 18px 8px;
+}
+
+.sheet-head h2 { font-size: 34px; font-weight: 800; }
+
+.sheet-sub { font-size: 20px; font-weight: 700; color: var(--mango-deep); }
+
+/* Sticky sheet footer: the quest's Go button can never scroll away. */
+.sheet-foot {
+  position: sticky;
+  bottom: calc(-18px - env(safe-area-inset-bottom));
+  background: var(--cream);
+  margin: 0 -18px calc(-18px - env(safe-area-inset-bottom));
+  padding: 10px 18px calc(14px + env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: center;
+}
+.sheet-foot.hidden { display: none; }
+#questGo { min-width: 200px; }
+
+.icon-btn {
+  font: inherit;
+  font-size: 34px;
+  line-height: 1;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  border: 3px solid var(--ink);
+  background: var(--paper);
+  cursor: pointer;
+}
+
+/* shelf grid */
+.shelf { max-height: 58%; }
+
+#shelfGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.shelf-item {
+  position: relative;
+  font: inherit;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 20px;
+  padding: 10px 8px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+.shelf-item:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(43,33,24,0.18); }
+
+.shelf-item img { width: 92px; height: 92px; }
+
+.shelf-name { font-size: 18px; font-weight: 700; }
+
+.shelf-price { font-size: 24px; font-weight: 800; color: var(--mango-deep); }
+
+.badge {
+  position: absolute;
+  top: -10px;
+  right: -6px;
+  background: var(--red);
+  color: var(--paper);
+  font-size: 18px;
+  font-weight: 800;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  padding: 2px 12px;
+  transform: rotate(6deg);
+}
+
+.badge-deal { background: var(--leaf); }
+
+.badge-rare { background: var(--mango); color: var(--ink); }
+
+/* Today's rare gets the golden shelf slot. */
+.shelf-item.rare { background: #FFF3D0; border-color: #B8860B; }
+
+.shelf-price s { opacity: 0.5; text-decoration-thickness: 3px; margin-right: 4px; }
+
+/* ---- catalog book (Phase 5) ---- */
+.book-sec {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--mango-deep);
+  margin: 14px 2px 8px;
+}
+
+.book-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 10px;
+}
+
+.book-cell {
+  position: relative;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  padding: 8px 6px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.book-cell img { width: 72px; height: 72px; }
+
+.book-cell:not(.found) { opacity: 0.75; }
+
+.book-cell.rare { background: #FFF3D0; }
+
+.book-cell.rare:not(.found) { background: #EFE8DA; }
+
+.book-name { font-size: 18px; font-weight: 700; text-align: center; }
+
+/* quest and wishlist rows */
+.q-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  padding: 8px 14px;
+  margin-bottom: 10px;
+}
+
+.q-row img { width: 56px; height: 56px; }
+
+.q-row.done { opacity: 0.55; }
+.q-row.done .q-name { text-decoration: line-through; }
+
+.q-name { font-size: 24px; flex: 1; }
+
+.q-star {
+  display: block;
+  font-size: 18px;
+  color: var(--mango-deep);
+}
+
+.q-price { font-size: 24px; font-weight: 800; }
+
+.q-check { font-size: 34px; color: var(--leaf); width: 36px; text-align: center; }
+
+/* Tappable quest rows press like buttons; the Go! span is pure affordance
+   (one handler on the row, so a tap anywhere works). */
+.q-row.go { cursor: pointer; }
+.q-row.go:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(43, 33, 24, 0.18); }
+.q-place {
+  display: block;
+  font-size: 17px;
+  font-weight: 700;
+  color: rgba(43, 33, 24, 0.55);
+}
+.q-greet {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--mango-deep);
+  padding: 2px 4px 10px;
+}
+.wish-sell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+/* min-height 44: this is the only tappable part of a wishlist row and it
+   measured 43px on the phone, one pixel under the touch floor. */
+.mini-btn {
+  font: inherit;
+  min-height: 44px;
+  font-size: 18px;
+  font-weight: 800;
+  background: var(--leaf);
+  color: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.wish-empty { font-size: 24px; font-weight: 700; padding: 12px; }
+
+/* ---- buy modal ---- */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(43, 33, 24, 0.35);
+  display: grid;
+  place-items: center;
+  z-index: 30;
+  padding: 16px;
+}
+
+.card {
+  width: min(680px, 100%);
+  background: var(--cream);
+  border: 4px solid var(--ink);
+  border-radius: 28px;
+  padding: 20px 22px;
+  box-shadow: 0 14px 40px rgba(43, 33, 24, 0.35);
+}
+
+.buy-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.buy-head img { width: 84px; height: 84px; }
+
+.buy-head > div { flex: 1; }
+
+.buy-name { font-size: 24px; font-weight: 800; }
+
+.buy-price { font-size: 34px; font-weight: 800; color: var(--mango-deep); }
+
+.buy-prompt {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 14px 2px 6px;
+  line-height: 1.35;
+}
+
+.buy-prompt b { color: var(--red); }
+
+.bills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.bill {
+  font-size: 24px;
+  font-weight: 800;
+  padding: 10px 16px;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  background: #DEEDC8;
+}
+
+.bill-100 { background: #F2D06B; }
+.bill-50 { background: #E8B4D9; }
+.bill-20 { background: #B8D9A0; }
+.bill-10 { background: #A0C9E8; }
+.bill-5 { background: #E8C0A0; }
+.bill-1 { background: #E4E0D2; }
+
+/* Inert money lies FLAT and slightly fanned; only drawer bills are raised
+   with a press state. Raised-versus-flat is the game-wide tappable-versus-
+   not distinction for money (clarity review). */
+.bills .bill { box-shadow: none; transform: rotate(-2deg); }
+.bills .bill:nth-child(even) { transform: rotate(2deg); }
+.bills-cap {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(43, 33, 24, 0.6);
+  margin-top: 8px;
+}
+.card-chip {
+  display: inline-block;
+  font-size: 22px;
+  font-weight: 800;
+  background: var(--mango);
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  padding: 6px 16px;
+  margin: 8px 0;
+}
+
+.buy-nudge {
+  min-height: 30px;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--red);
+}
+
+.buy-nudge.bounce { animation: bounce 0.5s ease; }
+@keyframes bounce { 30% { transform: translateY(-6px); } 60% { transform: translateY(2px); } }
+
+.entry-wrap {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+#entryArea { flex: 1; display: grid; place-items: center; }
+
+.pad-display {
+  font-size: 46px;
+  font-weight: 800;
+  min-width: 150px;
+  min-height: 76px;
+  display: grid;
+  place-items: center;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  padding: 6px 20px;
+  letter-spacing: 4px;
+}
+
+.pad-display .rest { color: rgba(43, 33, 24, 0.28); }
+
+/* An empty answer box gets a blinking caret, never a character. The old
+   placeholder was a literal middle dot, and in a game whose prices are all
+   whole dollars a young player reads a low dot as a decimal point.
+   Driven off :empty so paintPad only has to write '' and the assisted walk,
+   which writes real spans, clears it for free. */
+.pad-display:empty::after {
+  content: '';
+  display: block;
+  width: 6px;
+  height: 46px;
+  border-radius: 3px;
+  background: var(--mango2);
+  animation: caret 1s steps(1, end) infinite;
+}
+
+@keyframes caret { 0%, 55% { opacity: 1; } 56%, 100% { opacity: 0; } }
+
+.assist-hint { font-size: 18px; margin-top: 8px; color: var(--leaf); }
+
+/* keypad: 3x4 phone grid, never an ordered row.
+   touch-action none: keys and bills answer on pointerdown, so a touch that
+   starts on one must be a tap, never the start of a card scroll (a scroll
+   drag registering as a bill tap cost a firstTry, per the Phase 4 review). */
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 76px);
+  gap: 10px;
+  touch-action: none;
+}
+
+.key {
+  font: inherit;
+  font-size: 34px;
+  font-weight: 800;
+  width: 76px;
+  height: 68px;
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  background: var(--paper);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+.key:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(43,33,24,0.18); }
+
+.key-go { background: var(--leaf); color: var(--paper); }
+.key-go:disabled, .key-go.off { opacity: 0.35; }
+/* First-ever entries pulse the ready checkmark: type-then-confirm is a
+   learned rhythm, not a known one (clarity review). */
+.key-go.hint:not(.off) { animation: hintpulse 0.9s ease infinite; }
+.key-back { background: #E8DFCC; }
+
+.key.shake { animation: shake 0.3s ease; }
+@keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+
+/* ---- column scaffold ---- */
+.column {
+  display: grid;
+  grid-auto-rows: min-content;
+  justify-items: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.col-row {
+  display: grid;
+  grid-template-columns: 40px repeat(var(--cols), 58px);
+  align-items: end;
+  justify-items: center;
+}
+
+.col-sign { font-size: 34px; font-weight: 800; color: var(--red); }
+
+.col-digit { font-size: 46px; font-weight: 800; line-height: 1.1; }
+
+.col-digit.crossed {
+  text-decoration: line-through;
+  text-decoration-thickness: 4px;
+  text-decoration-color: var(--red);
+  opacity: 0.5;
+}
+
+.col-mark {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--red);
+  min-height: 28px;
+}
+
+.col-mark.pop { animation: pop 0.35s ease; }
+@keyframes pop { 40% { transform: scale(1.35); } }
+
+.col-rule {
+  width: calc(40px + var(--cols) * 58px);
+  height: 5px;
+  background: var(--ink);
+  border-radius: 3px;
+  margin: 6px 0;
+}
+
+.col-box {
+  width: 52px;
+  height: 62px;
+  border: 3px dashed rgba(43, 33, 24, 0.4);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 46px;
+  font-weight: 800;
+  background: var(--paper);
+}
+
+.col-box.active { border: 3px solid var(--mango2); background: #FFF1D6; }
+
+/* The guided ghost digit is the only walk-me-through target in the game, so
+   it pulses like every other one. 1.08, not hintpulse's 1.14: a 52px box in
+   a 58px track has 6px of slack. */
+.col-box.ghost { color: rgba(43, 33, 24, 0.3); animation: colhint 0.9s ease infinite; }
+@keyframes colhint { 50% { transform: scale(1.08); } }
+
+.col-box.done { color: var(--leaf); border-color: var(--leaf); border-style: solid; }
+
+/* ---- judge, success, celebration ---- */
+.judge {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.big-btn {
+  font: inherit;
+  font-size: 24px;
+  font-weight: 800;
+  padding: 16px 22px;
+  border: 3px solid var(--ink);
+  border-radius: 20px;
+  background: var(--paper);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+.big-btn:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(43,33,24,0.18); }
+/* Locked-out buttons look asleep (the judge's 600ms double-tap guard used
+   to eat taps while looking live). */
+.big-btn:disabled { opacity: 0.5; }
+
+.big-btn.ok { background: var(--leaf); color: var(--paper); }
+.big-btn.warn { background: var(--mango); }
+
+.success { text-align: center; padding: 12px 0 4px; }
+
+.success-big { font-size: 46px; font-weight: 800; color: var(--leaf); }
+
+.success-sub { font-size: 24px; margin: 4px 0 6px; }
+
+.assist-reveal {
+  text-align: center;
+  font-size: 34px;
+  font-weight: 800;
+  padding: 10px;
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+}
+
+.celeb { text-align: center; }
+
+.celeb-big { font-size: 46px; font-weight: 800; color: var(--mango-deep); }
+
+.celeb-msg { font-size: 24px; margin: 10px 0 18px; }
+
+.celeb-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+/* ---- lemonade stand ---- */
+/* Lighter dim than the buy modal: the customer stays visible behind it. */
+.stand-modal { background: rgba(43, 33, 24, 0.16); align-items: end; }
+
+/* Scrolls only when needed: a count-up done in $1 bills can wrap the tray
+   into more rows than the screen has. */
+/* The answer keys can never fall off the screen. Measured at 393x852: a
+   two-digit borrow purchase with a bills row and the teaching prompt built a
+   1061px card in an 852px viewport with the ✓ key fully below the fold and
+   nothing to scroll, and after a miss the × is hidden too, so there was no
+   submit, no keys and no exit. On iOS `vh` is the LARGE viewport, so the old
+   88vh already overflowed before any content was added: use dvh. */
+.stand-modal .card {
+  margin-bottom: max(14px, env(safe-area-inset-bottom));
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+
+#buy .card {
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* On a phone the card SHRINKS so it never has to scroll at all. Keys stay a
+   3x4 phone grid at 64x54, comfortably over the 44pt touch floor. */
+@media (max-width: 560px), (max-height: 560px) {
+  #buy .card, .stand-modal .card { padding: 14px 16px; }
+  .buy-head img, .stand-face { width: 64px; height: 64px; }
+  .buy-name, .stand-name { font-size: 20px; }
+  .buy-price { font-size: 28px; }
+  .buy-prompt { font-size: 20px; margin: 10px 2px 4px; }
+  .bark { font-size: 20px; }
+  .bills { gap: 6px; margin: 6px 0; }
+  .bill { font-size: 18px; padding: 6px 10px; }
+  .bills-cap { font-size: 16px; margin-top: 6px; }
+  .buy-nudge { min-height: 22px; font-size: 20px; }
+  .pad-display { min-height: 58px; font-size: 38px; }
+  .pad-display:empty::after { height: 38px; }
+  .entry-wrap { gap: 8px; margin-top: 4px; }
+  .keypad { grid-template-columns: repeat(3, 64px); gap: 8px; }
+  .key { width: 64px; height: 54px; font-size: 28px; }
+  .col-sign { font-size: 28px; }
+  .col-digit { font-size: 36px; }
+  .col-box { width: 44px; height: 50px; font-size: 36px; }
+  .col-row { grid-template-columns: 34px repeat(var(--cols), 48px); }
+  .col-rule { width: calc(34px + var(--cols) * 48px); }
+}
+
+/* The friends still to serve, so a session has a visible arc. Cups, not
+   faces: faces would spoil "Here comes Fern!" and telegraph the $50 drawer.
+   The row FILLS as she works, so it reads as "look what I made" rather than
+   a chore list burning down. flex 0 1 24px is what lets 15 pips survive a
+   393px screen. */
+.stand-pips { display: flex; gap: 3px; align-items: center; margin: 6px 0 2px; }
+.pip { flex: 0 1 24px; min-width: 0; height: auto; opacity: 0.28; filter: grayscale(1); }
+.pip-done { opacity: 1; filter: none; }
+.pip-now { opacity: 0.6; filter: none; outline: 3px solid var(--mango-deep); border-radius: 6px; }
+
+/* The judge card is the only yes/no question in the game, and Benny is wrong
+   40% of the time. Neither answer may wear the go-green that every other
+   button uses to mean "press me to continue". */
+.judge-btn { background: var(--paper); color: var(--ink); }
+
+.stand-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stand-name { font-size: 34px; font-weight: 800; color: var(--mango-deep); flex: 1; }
+
+/* First-run intro card: small and low so her bunny stays visible above it. */
+.intro-card {
+  width: min(440px, 100%);
+  text-align: center;
+  align-self: end;
+  margin-bottom: max(24px, env(safe-area-inset-bottom));
+}
+
+/* The customer's face on the card: the modal covers the animal it names
+   (clarity review), so the card carries the portrait. */
+.stand-face {
+  width: 64px;
+  height: 64px;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  background: var(--paper);
+  margin-right: 10px;
+}
+
+/* Her price list: three cups with prices, the ordered one highlighted. */
+.cups-menu {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: end;
+  margin-bottom: 8px;
+}
+.menu-cup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  white-space: nowrap;
+  /* Stays 18: at 20 the three size words plus borders overflow a 393px card. */
+  font-size: 18px;
+  font-weight: 800;
+  border: 3px solid transparent;
+  border-radius: 14px;
+  padding: 4px 8px;
+  opacity: 0.6;
+}
+/* The thumbnail renderer normalises every model to its own bounding box, so
+   the three cups came out 29.0, 30.0 and 30.7px and the SMALL one was widest.
+   Size them here or the picture contradicts the word under it. */
+.menu-cup img { width: 44px; height: 44px; }
+.menu-cup.cup-2 img { width: 34px; height: 34px; }
+.menu-cup.cup-4 img { width: 54px; height: 54px; }
+.menu-cup.menu-hi {
+  border-color: var(--ink);
+  background: var(--paper);
+  opacity: 1;
+}
+
+.bark {
+  font-size: 24px;
+  font-weight: 700;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 18px 18px 18px 4px;
+  padding: 10px 16px;
+  margin: 8px 0 4px;
+}
+
+.stand-order {
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+  padding: 8px 0 4px;
+}
+
+.cups-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+
+.cups-row img { width: 72px; height: 72px; }
+
+.cups-mini img { width: 52px; height: 52px; }
+
+.cups-math {
+  font-size: 34px;
+  font-weight: 800;
+  margin: 4px 0;
+  text-align: center;
+}
+
+#standEntryArea { display: grid; justify-items: center; gap: 4px; }
+
+/* drawer: count up from the total to the bill */
+.drawer { display: grid; gap: 10px; justify-items: center; padding: 6px 0; }
+
+.drawer-count {
+  font-size: 46px;
+  font-weight: 800;
+  min-width: 130px;
+  text-align: center;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  padding: 4px 18px;
+}
+
+.drawer-count.pop { animation: pop 0.35s ease; }
+
+.drawer-goal { font-size: 24px; font-weight: 800; color: var(--mango-deep); }
+
+.drawer-bills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  touch-action: none;
+}
+
+.drawer-bill {
+  font: inherit;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+.drawer-bill:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(43,33,24,0.18); }
+
+.drawer-bill.hint { animation: hintpulse 0.9s ease infinite; border-color: var(--leaf); }
+@keyframes hintpulse { 50% { transform: scale(1.14); } }
+
+.drawer-bill.shake { animation: shake 0.3s ease; }
+
+.drawer-tray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  min-height: 40px;
+  border: 3px dashed rgba(43, 33, 24, 0.3);
+  border-radius: 14px;
+  padding: 6px 10px;
+  width: 100%;
+}
+
+.drawer-tray .bill { font-size: 18px; padding: 6px 10px; }
+
+/* ---- parent gate + panel (Phase 6) ---- */
+.pin-card {
+  width: auto;
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+}
+
+.pin-title { font-size: 34px; font-weight: 800; }
+
+.pin-dots { display: flex; gap: 14px; }
+
+.pin-dots i {
+  width: 20px;
+  height: 20px;
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+}
+
+.pin-dots i.full { background: var(--ink); }
+
+/* The pin pad never submits: entry is length-gated, so hide the go key
+   instead of showing a dead button. */
+#pinPad .key-go { visibility: hidden; }
+
+.parent-card {
+  max-height: 86vh;
+  overflow-y: auto;
+}
+
+.parent-head {
+  top: -20px;
+  margin: -20px -22px 10px;
+  padding: 20px 22px 8px;
+}
+
+.p-line { font-size: 24px; margin: 8px 0; }
+
+.p-sec {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--mango-deep);
+  margin: 18px 0 8px;
+}
+
+.p-aisles { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+
+.p-aisle {
+  font-size: 18px;
+  font-weight: 800;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  padding: 4px 14px;
+  opacity: 0.4;
+}
+
+.p-aisle.open { background: var(--leaf); color: var(--paper); opacity: 1; }
+
+.p-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  padding: 8px 14px;
+  margin-bottom: 8px;
+  font-size: 18px;
+}
+
+.p-tier { flex: 1; font-weight: 700; }
+
+.p-check { color: var(--leaf); font-weight: 800; }
+
+.p-helper {
+  font-weight: 800;
+  color: var(--mango-deep);
+  background: #FFF1D6;
+  border-radius: 8px;
+  padding: 2px 8px;
+}
+
+.p-att { opacity: 0.65; }
+
+.p-acc { font-weight: 800; min-width: 56px; text-align: right; }
+
+.p-week { display: flex; gap: 8px; }
+
+.p-day {
+  flex: 1;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  padding: 8px 0 6px;
+}
+
+.p-day.today { background: #FFF1D6; }
+
+.p-day-n { font-size: 24px; font-weight: 800; }
+
+.p-day-w { font-size: 14px; opacity: 0.65; }
+
+/* ---- toast + confetti ---- */
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: 40px;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 24px;
+  font-weight: 800;
+  padding: 14px 26px;
+  border-radius: 999px;
+  opacity: 0;
+  transition: opacity 0.25s, transform 0.25s;
+  z-index: 50;
+  pointer-events: none;
+  max-width: 90%;
+  text-align: center;
+}
+
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+#confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+  overflow: hidden;
+}
+
+.conf {
+  position: absolute;
+  top: -20px;
+  width: 14px;
+  height: 18px;
+  border-radius: 4px;
+  animation: fall linear forwards;
+}
+
+@keyframes fall {
+  to { transform: translateY(105vh) translateX(var(--drift)) rotate(540deg); }
+}
+
+/* portrait: keypad below the entry, cards a bit narrower */
+@media (orientation: portrait) {
+  .entry-wrap { flex-direction: column; gap: 14px; }
+  .sheet { max-height: 55%; }
+}

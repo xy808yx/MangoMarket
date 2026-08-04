@@ -1,0 +1,6 @@
+.DS_Store
+node_modules/
+
+# Private design notes. These stay off the public repo.
+CLAUDE.md
+SPEC.md

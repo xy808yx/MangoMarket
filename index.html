@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>Mango Market</title>
+<meta name="theme-color" content="#8ED4F2">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Mango Market">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="world"></canvas>
+
+  <div id="hud">
+    <!-- Ship these EMPTY: hud() runs only after the save, engine, world and
+         trip are built, so hardcoded text can paint first, and a returning
+         player who sees "Wallet $20" instead of her $140 believes she lost
+         it. hud() is the only writer. -->
+    <button id="walletChip" class="chip"></button>
+    <button id="listBtn" class="chip hidden"></button>
+    <button id="wishBtn" class="chip hidden"></button>
+    <button id="bookBtn" class="chip hidden">My book</button>
+    <button id="goal" class="goal hidden">
+      <span id="goalText"></span>
+      <span id="goalStars" class="goal-stars"></span>
+    </button>
+  </div>
+
+  <button id="roomExit" class="chip room-exit hidden">Back outside</button>
+  <button id="groceryExit" class="chip room-exit hidden">Back outside</button>
+
+  <div id="quest" class="sheet hidden">
+    <div class="sheet-head">
+      <div>
+        <h2>Shopping list</h2>
+        <div class="sheet-sub">Let's go buy everything on this list!</div>
+      </div>
+      <button id="questClose" class="icon-btn" aria-label="close">×</button>
+    </div>
+    <div id="questList"></div>
+    <div class="sheet-foot"><button id="questGo" class="big-btn ok">Go!</button></div>
+  </div>
+
+  <div id="wish" class="sheet hidden">
+    <div class="sheet-head">
+      <h2>Wishlist</h2>
+      <button id="wishClose" class="icon-btn" aria-label="close">×</button>
+    </div>
+    <div id="wishList"></div>
+  </div>
+
+  <div id="book" class="sheet hidden">
+    <div class="sheet-head">
+      <h2>Your book</h2>
+      <button id="bookClose" class="icon-btn" aria-label="close">×</button>
+    </div>
+    <div id="bookList"></div>
+  </div>
+
+  <div id="shelf" class="sheet shelf hidden">
+    <div class="sheet-head">
+      <h2 id="shelfTitle">Aisle</h2>
+      <button id="shelfClose" class="icon-btn" aria-label="close">×</button>
+    </div>
+    <div id="shelfGrid"></div>
+  </div>
+
+  <div id="buy" class="modal hidden">
+    <div id="buyCard" class="card"></div>
+  </div>
+
+  <div id="stand" class="modal stand-modal hidden">
+    <div id="standCard" class="card"></div>
+  </div>
+
+  <div id="celebrate" class="modal hidden">
+    <div class="card celeb">
+      <div class="celeb-big">List done!</div>
+      <div id="celebMsg" class="celeb-msg"></div>
+      <div class="celeb-btns">
+        <button id="celebNew" class="big-btn ok">New list!</button>
+        <button id="celebStay" class="big-btn">Keep shopping!</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pin" class="modal hidden">
+    <div class="card pin-card">
+      <div class="pin-title">Grown-ups</div>
+      <div id="pinDots" class="pin-dots"><i></i><i></i><i></i><i></i></div>
+      <div id="pinPad"></div>
+      <button id="pinClose" class="big-btn">Back to the game</button>
+    </div>
+  </div>
+
+  <div id="parent" class="modal hidden">
+    <div class="card parent-card">
+      <div class="sheet-head parent-head">
+        <h2>Grown-ups</h2>
+        <button id="parentClose" class="icon-btn" aria-label="close">×</button>
+      </div>
+      <div id="parentBody"></div>
+    </div>
+  </div>
+
+  <div id="intro" class="modal hidden">
+    <div class="card intro-card">
+      <div class="celeb-big" id="introTitle"></div>
+      <div class="celeb-msg" id="introMsg"></div>
+      <div class="celeb-btns"><button id="introGo" class="big-btn ok"></button></div>
+    </div>
+  </div>
+
+  <div id="unlock" class="modal hidden">
+    <div class="card celeb">
+      <div class="celeb-big" id="unlockTitle"></div>
+      <div class="celeb-msg" id="unlockMsg"></div>
+      <div class="celeb-btns">
+        <button id="unlockGo" class="big-btn ok">Go see it!</button>
+        <button id="unlockLater" class="big-btn">Later!</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+  <div id="confetti"></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
