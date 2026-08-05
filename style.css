@@ -460,12 +460,21 @@ body {
    not distinction for money (clarity review). */
 .bills .bill { box-shadow: none; transform: rotate(-2deg); }
 .bills .bill:nth-child(even) { transform: rotate(2deg); }
-.bills-cap {
+/* Every picture group on a card gets a caption naming what it means. The
+   stand card used ONE cup picture for three different things (the queue of
+   friends, the size menu, the order quantity) and labelled none of them, so
+   the same drawing meant "a customer", "a price" and "a thing I am making"
+   on one screen. Captions plus a non-cup queue token are the fix, and they
+   are the same fix: a picture may mean exactly one thing per card. */
+.bills-cap, .block-cap {
   font-size: 18px;
   font-weight: 700;
   color: rgba(43, 33, 24, 0.6);
-  margin-top: 8px;
 }
+
+.bills-cap { margin-top: 8px; }
+
+.block-cap { text-align: center; margin-bottom: 2px; }
 .card-chip {
   display: inline-block;
   font-size: 22px;
@@ -487,15 +496,22 @@ body {
 .buy-nudge.bounce { animation: bounce 0.5s ease; }
 @keyframes bounce { 30% { transform: translateY(-6px); } 60% { transform: translateY(2px); } }
 
+/* The answer area and the keypad are ONE unit, so they sit together in the
+   middle. space-between plus a card far wider than its contents pushed them
+   to opposite edges: measured 619px of wrap holding 249px and 248px children,
+   with 122px of nothing between the sum she is reading and the keys she
+   answers on. Whether they sit side by side is a question of WIDTH, not of
+   orientation: a 703x784 window is "portrait" and still has room for both,
+   and stacking them there is what pushed the checkmark 21px past the fold. */
 .entry-wrap {
   display: flex;
   gap: 20px;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   margin-top: 8px;
 }
 
-#entryArea { flex: 1; display: grid; place-items: center; }
+#entryArea, #standEntryArea { display: grid; justify-items: center; gap: 4px; }
 
 .pad-display {
   font-size: 46px;
@@ -530,7 +546,21 @@ body {
 
 @keyframes caret { 0%, 55% { opacity: 1; } 56%, 100% { opacity: 0; } }
 
-.assist-hint { font-size: 18px; margin-top: 8px; color: var(--leaf); }
+/* Hints live BELOW the entry row, at full card width. They used to be
+   appended into the keypad host, and makeKeypad turns that host into a grid
+   of three 76px columns, so the hint became a thirteenth key: measured
+   76x129, a one-word-per-line ribbon hanging under the ✓. It was never a
+   styling bug, it was the wrong container. An empty hint collapses, so a
+   card can carry two slots (the borrow narration and the key naming) and
+   pay for only the ones with something to say. */
+.assist-hint {
+  font-size: 18px;
+  margin-top: 8px;
+  color: var(--leaf);
+  text-align: center;
+}
+
+.assist-hint:empty { display: none; }
 
 /* keypad: 3x4 phone grid, never an ordered row.
    touch-action none: keys and bills answer on pointerdown, so a touch that
@@ -710,40 +740,43 @@ body {
   overscroll-behavior: contain;
 }
 
-/* On a phone the card SHRINKS so it never has to scroll at all. Keys stay a
-   3x4 phone grid at 64x54, comfortably over the 44pt touch floor. */
-@media (max-width: 560px), (max-height: 560px) {
-  #buy .card, .stand-modal .card { padding: 14px 16px; }
-  .buy-head img, .stand-face { width: 64px; height: 64px; }
-  .buy-name, .stand-name { font-size: 20px; }
-  .buy-price { font-size: 28px; }
-  .buy-prompt { font-size: 20px; margin: 10px 2px 4px; }
-  .bark { font-size: 20px; }
-  .bills { gap: 6px; margin: 6px 0; }
-  .bill { font-size: 18px; padding: 6px 10px; }
-  .bills-cap { font-size: 16px; margin-top: 6px; }
-  .buy-nudge { min-height: 22px; font-size: 20px; }
-  .pad-display { min-height: 58px; font-size: 38px; }
-  .pad-display:empty::after { height: 38px; }
-  .entry-wrap { gap: 8px; margin-top: 4px; }
-  .keypad { grid-template-columns: repeat(3, 64px); gap: 8px; }
-  .key { width: 64px; height: 54px; font-size: 28px; }
-  .col-sign { font-size: 28px; }
-  .col-digit { font-size: 36px; }
-  .col-box { width: 44px; height: 50px; font-size: 36px; }
-  .col-row { grid-template-columns: 34px repeat(var(--cols), 48px); }
-  .col-rule { width: calc(34px + var(--cols) * 48px); }
+/* The card-shrinking rules used to live HERE, in the middle of the sheet, and
+   half of them were dead letters: .stand-name and .bark are declared further
+   down the file at the same specificity, so the later rule won and the stand
+   card never shrank its name or its speech bubble on a phone at all. Every
+   media query now lives at the END of this file, after the base rules it is
+   meant to override. Keep it that way. */
+
+/* The friends still to serve, so a session has a visible arc. It FILLS as she
+   works, so it reads as "look what I did" and not a chore list burning down.
+   Faces are still out (they would spoil "Here comes Fern!" and telegraph the
+   $50 drawer), but these used to be CUP thumbnails, and the same card also
+   shows cups as a price menu and cups as the order: one drawing, three
+   meanings, none of them written down. A dot is not a cup, and the caption
+   says what the row counts. */
+.stand-queue {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 6px 0 2px;
 }
 
-/* The friends still to serve, so a session has a visible arc. Cups, not
-   faces: faces would spoil "Here comes Fern!" and telegraph the $50 drawer.
-   The row FILLS as she works, so it reads as "look what I made" rather than
-   a chore list burning down. flex 0 1 24px is what lets 15 pips survive a
-   393px screen. */
-.stand-pips { display: flex; gap: 3px; align-items: center; margin: 6px 0 2px; }
-.pip { flex: 0 1 24px; min-width: 0; height: auto; opacity: 0.28; filter: grayscale(1); }
-.pip-done { opacity: 1; filter: none; }
-.pip-now { opacity: 0.6; filter: none; outline: 3px solid var(--mango-deep); border-radius: 6px; }
+.stand-queue .block-cap { margin: 0; }
+
+.queue-dots { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+
+.qd {
+  width: 14px;
+  height: 14px;
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  background: var(--paper);
+  opacity: 0.35;
+}
+
+.qd-done { background: var(--leaf); opacity: 1; }
+.qd-now { background: var(--mango); opacity: 1; }
 
 /* The judge card is the only yes/no question in the game, and Benny is wrong
    40% of the time. Neither answer may wear the go-green that every other
@@ -845,7 +878,8 @@ body {
   text-align: center;
 }
 
-#standEntryArea { display: grid; justify-items: center; gap: 4px; }
+/* A captioned picture group: caption on top, pictures under it. */
+.cup-block { display: grid; justify-items: center; }
 
 /* drawer: count up from the total to the bill */
 .drawer { display: grid; gap: 10px; justify-items: center; padding: 6px 0; }
@@ -1049,8 +1083,130 @@ body {
   to { transform: translateY(105vh) translateX(var(--drift)) rotate(540deg); }
 }
 
-/* portrait: keypad below the entry, cards a bit narrower */
+/* ====================================================================
+   MEDIA QUERIES. Everything responsive lives here, at the bottom, after
+   every base rule. Anything added above this line at the same specificity
+   silently wins over these; that is how .stand-name and .bark ended up
+   never shrinking on a phone.
+   ==================================================================== */
+
+/* portrait: sheets take less of the screen. The entry row used to stack here
+   too, which is why a 703x784 window (portrait, and 620px of usable card
+   width) built a card 182px taller than the screen. Stacking is a width
+   question now and lives in the 620px rule below. */
 @media (orientation: portrait) {
-  .entry-wrap { flex-direction: column; gap: 14px; }
   .sheet { max-height: 55%; }
+}
+
+/* On any SHORT screen the card SHRINKS so it never has to scroll at all.
+   Keys stay a 3x4 phone grid at 64x54, comfortably over the 44pt touch floor.
+   The old rule fired at 560px and left everything from 561px up to a full
+   iPad with a stretched card and unstretched contents: measured at 703x784
+   the ✓ sat at 805px in a 784px window, reachable only by scrolling, which is
+   the same defect the iPhone already had fixed. Height is what this is about,
+   so height is what the rule tests. 820px catches iPad landscape (768) and
+   every laptop window short enough to matter, and leaves iPad portrait
+   (1024) at full size. */
+@media (max-width: 620px), (max-height: 820px) {
+  #buy .card, .stand-modal .card { padding: 14px 16px; }
+  .buy-head img, .stand-face { width: 64px; height: 64px; }
+  .buy-name, .stand-name { font-size: 20px; }
+  .buy-price { font-size: 28px; }
+  .buy-prompt { font-size: 20px; margin: 10px 2px 4px; }
+  .bark { font-size: 20px; padding: 8px 14px; }
+  .bills { gap: 6px; margin: 6px 0; }
+  .bill { font-size: 18px; padding: 6px 10px; }
+  .bills-cap { font-size: 16px; margin-top: 6px; }
+  .block-cap { font-size: 16px; }
+  .assist-hint { font-size: 16px; margin-top: 4px; }
+  .buy-nudge { min-height: 22px; font-size: 20px; }
+  .pad-display { min-height: 58px; font-size: 38px; }
+  .pad-display:empty::after { height: 38px; }
+  .entry-wrap { gap: 8px; margin-top: 2px; }
+  .keypad { grid-template-columns: repeat(3, 64px); gap: 8px; }
+  .key { width: 64px; height: 54px; font-size: 28px; }
+  .col-sign { font-size: 28px; }
+  .col-digit { font-size: 36px; }
+  .col-box { width: 44px; height: 50px; font-size: 36px; }
+  .col-row { grid-template-columns: 34px repeat(var(--cols), 48px); }
+  .col-rule { width: calc(34px + var(--cols) * 48px); }
+  .cups-math { font-size: 28px; margin: 2px 0; }
+  .cups-row img { width: 56px; height: 56px; }
+  .cups-mini img { width: 42px; height: 42px; }
+  .stand-order { gap: 10px; padding: 4px 0 2px; }
+  .success-big { font-size: 38px; }
+  .success-sub { font-size: 20px; }
+  .drawer-count { font-size: 38px; }
+  .drawer-goal { font-size: 20px; }
+  .qd { width: 10px; height: 10px; border-width: 2px; }
+  .stand-queue { gap: 8px; }
+}
+
+/* Side by side needs about 480px of content width (a three-column scaffold
+   plus the keypad). Below that they stack, and only below that: the stacking
+   is what makes the card tall, so it has to be the last resort and not the
+   default that a "portrait" media query used to make it. */
+@media (max-width: 620px) {
+  .entry-wrap { flex-direction: column; gap: 12px; }
+}
+
+/* A phone held sideways is 393px tall and has to fit the same card. This was
+   the last surface still needing a scroll to reach the ✓. Everything gets one
+   more size down and the card is allowed closer to the screen edges; the keys
+   stay 56x42, still over the 44pt touch target on the axis a thumb misses on.
+   Nothing but a landscape phone is this short: an iPad is 768 at its
+   shortest, so this tier can be as aggressive as it needs to be. */
+@media (max-height: 460px) {
+  .modal { padding: 4px; }
+  /* Subtract the safe-area inset from the height as well as adding it as a
+     margin: on a real phone the home-indicator inset is about 21px, and a
+     card sized to the full viewport PLUS that margin overflows the top by
+     exactly the inset. */
+  #buy .card, .stand-modal .card { padding: 10px 14px; max-height: calc(100dvh - 8px); }
+  .stand-modal .card {
+    margin-bottom: max(4px, env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 8px - max(4px, env(safe-area-inset-bottom)));
+  }
+  .buy-head img, .stand-face { width: 38px; height: 38px; }
+  .buy-name, .stand-name { font-size: 18px; }
+  .buy-price { font-size: 24px; }
+  .buy-prompt { font-size: 16px; line-height: 1.25; margin: 2px 2px 0; }
+  .bark { font-size: 15px; padding: 3px 10px; margin: 2px 0 0; }
+  .stand-queue { margin: 0; gap: 6px; }
+  .qd { width: 8px; height: 8px; }
+  .block-cap, .bills-cap { font-size: 14px; }
+  .bills-cap { margin-top: 2px; }
+  .buy-nudge { min-height: 14px; font-size: 16px; }
+  .entry-wrap { gap: 10px; margin-top: 2px; }
+  .pad-display { min-height: 44px; font-size: 30px; padding: 4px 14px; min-width: 110px; }
+  .pad-display:empty::after { height: 30px; }
+  .keypad { grid-template-columns: repeat(3, 56px); gap: 6px; }
+  .key { width: 56px; height: 42px; font-size: 24px; }
+  .col-mark { font-size: 18px; min-height: 20px; }
+  .col-digit { font-size: 28px; }
+  .col-sign { font-size: 22px; }
+  .col-box { width: 36px; height: 40px; font-size: 28px; }
+  .col-row { grid-template-columns: 26px repeat(var(--cols), 40px); }
+  .col-rule { width: calc(26px + var(--cols) * 40px); margin: 2px 0; }
+  .assist-hint { font-size: 14px; margin-top: 0; }
+  .cups-math { font-size: 22px; margin: 0; }
+  .cups-row img { width: 34px; height: 34px; }
+  .cups-mini img { width: 30px; height: 30px; }
+  .menu-cup { font-size: 14px; padding: 1px 6px; }
+  .menu-cup img { width: 28px; height: 28px; }
+  .menu-cup.cup-2 img { width: 22px; height: 22px; }
+  .menu-cup.cup-4 img { width: 33px; height: 33px; }
+  .cups-menu { gap: 6px; margin-bottom: 2px; }
+  .stand-order { gap: 4px; padding: 2px 0 0; }
+  .big-btn { font-size: 18px; padding: 8px 16px; }
+  .success { padding: 2px 0; }
+  .success-big { font-size: 28px; }
+  .success-sub { font-size: 16px; margin: 1px 0 3px; }
+  .drawer { gap: 4px; padding: 0; }
+  .drawer-count { font-size: 26px; padding: 2px 12px; min-width: 90px; }
+  .drawer-goal { font-size: 17px; }
+  .drawer-tray { min-height: 22px; padding: 3px 8px; }
+  .drawer-bills { gap: 5px; }
+  .bill { font-size: 15px; padding: 4px 8px; }
+  .bills { gap: 4px; margin: 4px 0; }
 }

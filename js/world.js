@@ -323,66 +323,109 @@ function buildFox() {
   return g;
 }
 
-function buildBeaver() {
+/* ---- The four stuffies. These are four real toys, rebuilt here as voxel
+   animals to the same proportions as everyone else rather than ported as the
+   flat pixel sprites they are in the other app: a customer that walks up to
+   the counter in a different art style would read as a bug. Colours come from
+   the toys. They carry NO trait, deliberately: the difficulty curve and the
+   gentle-first-session shaping were tuned and sim-verified against exactly
+   three traited regulars (waddles, fern, miso), and a fourth forced tender or
+   a second exact payer would move numbers nobody asked to move. ---- */
+
+function buildPanda() {
   const g = new THREE.Group();
-  const coat = mat(0x8A5A33), dark = mat(0x2B2118), teeth = mat(0xFFF6EA);
-  vox(g, 1.05, 0.9, 1.1, 0, 0.62, 0, coat);
-  vox(g, 0.85, 0.75, 0.72, 0, 1.5, 0.2, coat);
-  vox(g, 0.2, 0.2, 0.12, -0.28, 1.95, 0.18, coat);
-  vox(g, 0.2, 0.2, 0.12, 0.28, 1.95, 0.18, coat);
-  vox(g, 0.09, 0.13, 0.09, -0.2, 1.62, 0.58, dark, { noCast: true });
-  vox(g, 0.09, 0.13, 0.09, 0.2, 1.62, 0.58, dark, { noCast: true });
-  vox(g, 0.26, 0.18, 0.12, 0, 1.42, 0.6, mat(0x6E4526));
-  vox(g, 0.2, 0.18, 0.08, 0, 1.24, 0.6, teeth, { noCast: true });
-  vox(g, 0.6, 0.14, 0.95, 0, 0.12, -0.95, mat(0x6E4526));
+  const white = mat(0xF5F5F5), grey = mat(0x8E8E8E), patch = mat(0x9E9E9E);
+  const dark = mat(0x2B2118), pink = mat(0xFFB6C1);
+  vox(g, 1.0, 0.9, 1.15, 0, 0.6, 0, white);
+  vox(g, 0.24, 0.56, 0.34, -0.53, 0.58, 0.08, grey);
+  vox(g, 0.24, 0.56, 0.34, 0.53, 0.58, 0.08, grey);
+  vox(g, 0.88, 0.8, 0.74, 0, 1.48, 0.22, white);
+  vox(g, 0.26, 0.26, 0.16, -0.36, 1.92, 0.16, grey);
+  vox(g, 0.26, 0.26, 0.16, 0.36, 1.92, 0.16, grey);
+  vox(g, 0.28, 0.26, 0.08, -0.21, 1.56, 0.57, patch, { noCast: true });
+  vox(g, 0.28, 0.26, 0.08, 0.21, 1.56, 0.57, patch, { noCast: true });
+  vox(g, 0.1, 0.13, 0.09, -0.21, 1.54, 0.61, dark, { noCast: true });
+  vox(g, 0.1, 0.13, 0.09, 0.21, 1.54, 0.61, dark, { noCast: true });
+  vox(g, 0.18, 0.12, 0.1, 0, 1.3, 0.58, pink, { noCast: true });
   return g;
 }
 
-function buildRaccoon() {
+function buildHippo() {
   const g = new THREE.Group();
-  const coat = mat(0x9A9A9A), dark = mat(0x2B2118), light = mat(0xE4E0D2);
+  const body = mat(0x9B59B6), deep = mat(0x8E44AD), light = mat(0xAF7AC5);
+  const dark = mat(0x2B2118), inner = mat(0xD8A9E8);
+  vox(g, 1.0, 0.85, 1.15, 0, 0.6, 0, body);
+  vox(g, 0.86, 0.72, 0.66, 0, 1.45, 0.22, body);
+  /* The snout is the whole point of a hippo, so it has to break the head's
+     silhouette: lighter, blunter, set LOW and pushed 0.2 further forward than
+     the face. Sized level with the head it just read as a purple box. */
+  vox(g, 0.8, 0.44, 0.42, 0, 1.28, 0.55, light);
+  vox(g, 0.12, 0.1, 0.08, -0.19, 1.38, 0.76, deep, { noCast: true });
+  vox(g, 0.12, 0.1, 0.08, 0.19, 1.38, 0.76, deep, { noCast: true });
+  vox(g, 0.2, 0.18, 0.14, -0.32, 1.82, 0.16, body);
+  vox(g, 0.2, 0.18, 0.14, 0.32, 1.82, 0.16, body);
+  vox(g, 0.1, 0.09, 0.07, -0.32, 1.82, 0.24, inner, { noCast: true });
+  vox(g, 0.1, 0.09, 0.07, 0.32, 1.82, 0.24, inner, { noCast: true });
+  vox(g, 0.1, 0.13, 0.09, -0.23, 1.63, 0.55, dark, { noCast: true });
+  vox(g, 0.1, 0.13, 0.09, 0.23, 1.63, 0.55, dark, { noCast: true });
+  vox(g, 0.16, 0.16, 0.34, 0, 0.52, -0.68, deep, { rx: -0.3 });
+  return g;
+}
+
+function buildLion() {
+  const g = new THREE.Group();
+  const coat = mat(0xF4A460), mane = mat(0xCD853F), maneDeep = mat(0xD2691E);
+  const dark = mat(0x2B2118), nose = mat(0x8B4513);
   vox(g, 0.95, 0.85, 1.1, 0, 0.6, 0, coat);
-  vox(g, 0.82, 0.75, 0.72, 0, 1.45, 0.22, coat);
-  vox(g, 0.86, 0.22, 0.2, 0, 1.56, 0.55, dark);
-  vox(g, 0.1, 0.1, 0.08, -0.2, 1.56, 0.68, light, { noCast: true });
-  vox(g, 0.1, 0.1, 0.08, 0.2, 1.56, 0.68, light, { noCast: true });
-  vox(g, 0.22, 0.26, 0.14, -0.26, 1.92, 0.2, coat);
-  vox(g, 0.22, 0.26, 0.14, 0.26, 1.92, 0.2, coat);
-  vox(g, 0.3, 0.2, 0.24, 0, 1.28, 0.6, light);
-  vox(g, 0.3, 0.3, 0.5, 0.25, 0.5, -0.75, coat, { rx: -0.35 });
-  vox(g, 0.32, 0.32, 0.24, 0.3, 0.66, -1.0, dark);
+  /* The mane is a slab BEHIND the face, wider and taller than it, with the
+     face pushed forward so a rim of fluff shows all the way round. A mane
+     built level with the face is invisible: the first attempt just read as a
+     bigger square head. Corner tufts break the straight edge. */
+  vox(g, 1.14, 1.08, 0.44, 0, 1.5, -0.02, maneDeep);
+  for (const [dx, dy] of [[-0.5, 0.42], [0.5, 0.42], [-0.56, -0.14], [0.56, -0.14], [0, 0.56]]) {
+    vox(g, 0.26, 0.26, 0.34, dx, 1.5 + dy, 0.04, mane);
+  }
+  vox(g, 0.76, 0.68, 0.6, 0, 1.46, 0.36, coat);
+  vox(g, 0.18, 0.18, 0.12, -0.3, 1.86, 0.34, coat);
+  vox(g, 0.18, 0.18, 0.12, 0.3, 1.86, 0.34, coat);
+  vox(g, 0.09, 0.13, 0.09, -0.18, 1.52, 0.67, dark, { noCast: true });
+  vox(g, 0.09, 0.13, 0.09, 0.18, 1.52, 0.67, dark, { noCast: true });
+  vox(g, 0.18, 0.13, 0.1, 0, 1.32, 0.65, nose, { noCast: true });
+  vox(g, 0.16, 0.16, 0.5, 0.2, 0.52, -0.78, coat, { rx: -0.3 });
+  vox(g, 0.22, 0.22, 0.2, 0.24, 0.66, -1.02, maneDeep);
   return g;
 }
 
-function buildDeer() {
+function buildUnicorn() {
   const g = new THREE.Group();
-  const coat = mat(0xC98E58), cream = mat(0xFFF6EA), dark = mat(0x2B2118);
-  vox(g, 0.8, 0.85, 1.05, 0, 0.75, 0, coat);
-  vox(g, 0.66, 0.68, 0.62, 0, 1.68, 0.22, coat);
-  vox(g, 0.16, 0.36, 0.12, -0.24, 2.1, 0.15, coat, { rz: 0.35 });
-  vox(g, 0.16, 0.36, 0.12, 0.24, 2.1, 0.15, coat, { rz: -0.35 });
-  vox(g, 0.09, 0.12, 0.09, -0.17, 1.74, 0.52, dark, { noCast: true });
-  vox(g, 0.09, 0.12, 0.09, 0.17, 1.74, 0.52, dark, { noCast: true });
-  vox(g, 0.2, 0.16, 0.16, 0, 1.58, 0.55, mat(0x6E4526));
-  vox(g, 0.14, 0.14, 0.14, -0.2, 1.1, 0.3, cream, { noCast: true });
-  vox(g, 0.14, 0.14, 0.14, 0.15, 1.05, -0.2, cream, { noCast: true });
-  vox(g, 0.18, 0.22, 0.14, 0, 0.85, -0.55, cream);
-  return g;
-}
-
-function buildOtter() {
-  const g = new THREE.Group();
-  const coat = mat(0x7A5230), belly = mat(0xD9B98A), dark = mat(0x2B2118);
-  vox(g, 0.85, 0.75, 1.3, 0, 0.5, 0, coat);
-  vox(g, 0.6, 0.35, 0.7, 0, 0.72, 0.25, belly, { noCast: true });
-  vox(g, 0.72, 0.66, 0.66, 0, 1.3, 0.35, coat);
-  vox(g, 0.36, 0.24, 0.2, 0, 1.18, 0.72, belly);
-  vox(g, 0.1, 0.08, 0.08, 0, 1.3, 0.72, dark, { noCast: true });
-  vox(g, 0.09, 0.11, 0.09, -0.18, 1.42, 0.62, dark, { noCast: true });
-  vox(g, 0.09, 0.11, 0.09, 0.18, 1.42, 0.62, dark, { noCast: true });
-  vox(g, 0.14, 0.14, 0.1, -0.26, 1.62, 0.3, coat);
-  vox(g, 0.14, 0.14, 0.1, 0.26, 1.62, 0.3, coat);
-  vox(g, 0.3, 0.26, 0.8, 0, 0.3, -0.95, coat, { rx: -0.12 });
+  const white = mat(0xFFFDF8), pink = mat(0xFFB6C1), eye = mat(0x6B3FA0);
+  const gold = mat(0xFFD34D), rose = mat(0xFF9ED2);
+  vox(g, 0.92, 0.85, 1.1, 0, 0.6, 0, white);
+  vox(g, 0.84, 0.78, 0.72, 0, 1.46, 0.24, white);
+  vox(g, 0.16, 0.3, 0.13, -0.33, 1.92, 0.3, white, { rz: 0.2 });
+  vox(g, 0.16, 0.3, 0.13, 0.33, 1.92, 0.3, white, { rz: -0.2 });
+  vox(g, 0.07, 0.16, 0.07, -0.33, 1.9, 0.37, pink, { noCast: true });
+  vox(g, 0.07, 0.16, 0.07, 0.33, 1.9, 0.37, pink, { noCast: true });
+  /* The horn owns the peak, alone. Sharing the crown with the mane (two
+     earlier attempts) turned the horn into a birthday candle on a rainbow
+     loaf. */
+  vox(g, 0.2, 0.22, 0.2, 0, 1.96, 0.36, gold);
+  vox(g, 0.15, 0.18, 0.15, 0, 2.14, 0.36, rose);
+  vox(g, 0.09, 0.16, 0.09, 0, 2.29, 0.36, gold);
+  /* The mane is Shasha's trick: a slab BEHIND the head and WIDER than it, so
+     a rim shows on both sides instead of disappearing. A mane tucked at the
+     nape is invisible here no matter how it is coloured, because the head
+     itself is what covers it: from this camera, anything within about 0.4 of
+     the skull's own footprint is inside the skull's silhouette. */
+  const bands = [
+    [0xFF6B6B, 1.96], [0xFFB347, 1.76], [0xFFD34D, 1.56],
+    [0x77DD77, 1.36], [0x89CFF0, 1.16]
+  ];
+  for (const [c, y] of bands) vox(g, 1.12, 0.2, 0.3, 0, y, -0.18, mat(c));
+  vox(g, 0.11, 0.14, 0.09, -0.19, 1.52, 0.6, eye, { noCast: true });
+  vox(g, 0.11, 0.14, 0.09, 0.19, 1.52, 0.6, eye, { noCast: true });
+  vox(g, 0.16, 0.11, 0.09, 0, 1.31, 0.6, rose, { noCast: true });
+  vox(g, 0.18, 0.44, 0.18, 0, 0.6, -0.64, mat(0x89CFF0), { rx: -0.25 });
   return g;
 }
 
@@ -394,8 +437,8 @@ function buildOtter() {
 const CUSTOMER_BUILDERS = {
   duck: (g, P) => buildDuck(g, P, 0, 0, 0),
   cat: (g, P) => buildCat(g, P, 0, 0, 0),
-  fox: buildFox, beaver: buildBeaver, raccoon: buildRaccoon,
-  deer: buildDeer, otter: buildOtter,
+  fox: buildFox,
+  panda: buildPanda, hippo: buildHippo, lion: buildLion, unicorn: buildUnicorn,
   cub: () => {
     const g = new THREE.Group();
     buildBear(g, 0, 0, { fur: 0xB98756, muzzle: 0xE8D2AC, scale: 0.72 });

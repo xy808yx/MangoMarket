@@ -1,5 +1,5 @@
 /* Mango Market service worker. Bump CACHE on every deploy. */
-const CACHE = 'mango-v5';
+const CACHE = 'mango-v6';
 
 /* Everything the game needs to boot offline. Music MP3s are deliberately
    NOT here: they may not exist yet (they are added when the tracks are ready),
@@ -28,7 +28,9 @@ const CORE = [
   'vendor/three.module.js',
   'vendor/three.core.js',
   'icons/icon-192.png',
-  'icons/icon-512.png'
+  'icons/icon-512.png',
+  'icons/favicon-32.png',
+  'icons/favicon-16.png'
 ];
 
 self.addEventListener('install', e => {

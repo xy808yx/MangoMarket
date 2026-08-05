@@ -42,7 +42,19 @@ const CUP_ITEMS = {
   ] }
 };
 
+/* Hint slots, rendered as part of the body so a new phase clears them and
+   the nodes exist before makeColumn runs (its first borrow mark fires inside
+   its own constructor). They sit BELOW the entry row at full card width: the
+   key-naming hint used to be appended into the keypad host, which makeKeypad
+   turns into a grid of three 76px columns, so it became a thirteenth key
+   76px wide and 129px tall. Two slots, because a first-ever column card owes
+   her both the borrow narration and the names of ✓ and ⌫; an empty one
+   collapses to nothing. */
+const HINTS = '<div class="assist-hint" id="standColHint"></div>'
+  + '<div class="assist-hint" id="standKeyHint"></div>';
+
 const $ = id => document.getElementById(id);
+const setHint = (id, text) => { const el = $(id); if (el) el.textContent = text; };
 const pickOne = arr => arr[Math.floor(Math.random() * arr.length)];
 
 export function createStand({ engine, state, world, hud, onEvents, onExit, onSession }) {
@@ -157,9 +169,12 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
         <div class="stand-name">${c.name}</div>
         <button id="standClose" class="chip">All done</button>
       </div>
-      <div class="stand-pips">${session.queue.map((q, i) =>
-        `<img class="pip${i < session.i ? ' pip-done' : i === session.i ? ' pip-now' : ''}"
-          id="pip${i}" alt="" src="${world.thumbnail(CUP_ITEMS[2])}">`).join('')}</div>
+      <div class="stand-queue">
+        <span class="block-cap">Friends today</span>
+        <span class="queue-dots">${session.queue.map((q, i) =>
+          `<i class="qd${i < session.i ? ' qd-done' : i === session.i ? ' qd-now' : ''}"
+            id="pip${i}"></i>`).join('')}</span>
+      </div>
       <div class="bark" id="standBark">${pickOne(c.hello)}</div>
       <div class="buy-prompt" id="standPrompt"></div>
       <div id="standBills"></div>
@@ -231,10 +246,21 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
     const plural = o.cups > 1 ? 's' : '';
     if (sale.phase === 'order') {
       $('standPrompt').innerHTML = `<b>${o.cups} ${size} cup${plural}, please!</b>`;
+      /* Both cup groups are captioned. Unlabelled, the price list and the
+         order were the same picture twice on one card, and a menu that
+         highlights Medium sat directly above one Medium cup with nothing
+         saying that the top row is what things cost and the bottom row is
+         what she has to make. */
       $('standBody').innerHTML = `
         <div class="stand-order">
-          ${menuStrip(o.per)}
-          <div class="cups-row">${cupImgs(o)}</div>
+          <div class="cup-block">
+            <div class="block-cap">Your prices</div>
+            ${menuStrip(o.per)}
+          </div>
+          <div class="cup-block">
+            <div class="block-cap">${c.name} wants</div>
+            <div class="cups-row">${cupImgs(o)}</div>
+          </div>
           <button id="standMake" class="big-btn ok">Make lemonade!</button>
         </div>`;
       $('standMake').addEventListener('click', () => {
@@ -256,12 +282,16 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
       $('standBody').innerHTML = `
         <div class="entry-wrap">
           <div id="standEntryArea">
-            <div class="cups-row cups-mini">${cupImgs(o)}</div>
+            <div class="cup-block">
+              <div class="block-cap">You made</div>
+              <div class="cups-row cups-mini">${cupImgs(o)}</div>
+            </div>
             <div class="cups-math">${o.cups} cups, $${o.per} each</div>
             <div class="pad-display" id="standPad"></div>
           </div>
           <div id="standKeypadHost"></div>
-        </div>`;
+        </div>
+        ${HINTS}`;
       mountKeypad();
       paintPad();
     } else if (sale.phase === 'change') {
@@ -285,7 +315,8 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
         <div class="entry-wrap">
           <div id="standEntryArea"></div>
           <div id="standKeypadHost"></div>
-        </div>`;
+        </div>
+        ${HINTS}`;
       mountKeypad();
       if (p.entry === 'column') {
         mountColumn($('standEntryArea'), p, d => { sale.colW = d; });
@@ -332,26 +363,26 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
     }
   }
 
-  /* The column, its start hint and its borrow narration in one place.
-     makeColumn wipes its host, so the hint node has to exist BEFORE it runs:
-     the first mark fires inside makeColumn's own constructor. Borrowing had
-     no explanation anywhere in the project, and a struck-through digit with a
-     new red number above it is the single least self-evident thing a young player
-     meets. Direction matters: a borrowOut column RECEIVES the ten, a borrowIn
-     column PAID for it, and one sentence cannot serve both. */
+  /* The column and its borrow narration. The hint node lives in the card
+     body (HINTS above), not in this host: makeColumn wipes whatever it is
+     given, and the first mark fires inside its own constructor, so the slot
+     has to be somewhere this function does not touch. Borrowing had no
+     explanation anywhere in the project, and a struck-through digit with a
+     new red number above it is the single least self-evident thing a young
+     player meets. Direction matters: a borrowOut column RECEIVES the ten, a
+     borrowIn column PAID for it, and one sentence cannot serve both. */
   function mountColumn(host, p, assign) {
-    host.innerHTML = '<div id="standColHost"></div>'
-      + '<div class="assist-hint" id="standColHint"></div>';
+    host.innerHTML = '<div id="standColHost"></div>';
     if (!kvLoad('colTaught', 0)) {
-      $('standColHint').textContent = 'Start in the orange box.';
+      setHint('standColHint', 'Start in the orange box.');
     }
     assign(makeColumn($('standColHost'), columns(p.m, p.s), {
       marks: p.stage === 0,
       onMark: (i, shown, c) => {
         if (sale.assist || kvLoad('borrowTaught', 0)) return;
-        $('standColHint').textContent = c.borrowOut
+        setHint('standColHint', c.borrowOut
           ? `${c.top} is too small, so it takes a ten from next door. Now it is ${shown}. Use ${shown}!`
-          : `This one gave a ten away. ${c.top} is now ${shown}.`;
+          : `This one gave a ten away. ${c.top} is now ${shown}.`);
       }
     }));
   }
@@ -379,8 +410,7 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
        mistyped digit had no visible way out and she submitted a typo as a
        maths error. Name both once, in the same window, then it retires. */
     if (!kvLoad('goTaught', 0)) {
-      $('standKeypadHost').insertAdjacentHTML('beforeend',
-        `<div class="assist-hint">Tap ✓ when you are done. Tap ⌫ to erase.</div>`);
+      setHint('standKeyHint', 'Tap ✓ when you are done. Tap ⌫ to erase.');
     }
     sale.entry = [];
   }
@@ -499,15 +529,16 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
       mountColumn($('standEntryArea'), { m: p.m, s: p.s, stage: 0 },
         d => { sale.colW = d; });
       const expect = sale.colW.guide(0);
-      $('standColHint').textContent =
-        'The glowing box shows the number. Tap that number on the keypad!';
+      setHint('standColHint',
+        'The glowing box shows the number. Tap that number on the keypad!');
+      setHint('standKeyHint', '');
       sale.assist = { i: 0, expect, col: true, n: columns(p.m, p.s).length };
     } else {
       const answer = sale.phase === 'total' ? o.total : o.problem.answer;
       sale.assist = { digits: digitsOf(answer).reverse(), at: 0, col: false, answer };
-      const host = $('standEntryArea');
-      host.innerHTML = `<div class="pad-display" id="standPad"></div>
-        <div class="assist-hint">Tap these numbers on the keypad!</div>`;
+      $('standEntryArea').innerHTML = `<div class="pad-display" id="standPad"></div>`;
+      setHint('standColHint', 'Tap these numbers on the keypad!');
+      setHint('standKeyHint', '');
       paintAssist();
     }
     keypad && keypad.setGo(false);
@@ -601,7 +632,7 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
     /* Fill her pip now: session.i only advances in the Next! handler, so the
        strip would otherwise sit stale through the whole celebration. */
     const pip = $('pip' + session.i);
-    if (pip) { pip.classList.remove('pip-now'); pip.classList.add('pip-done'); }
+    if (pip) { pip.classList.remove('qd-now'); pip.classList.add('qd-done'); }
     /* Money-teaching flags (clarity review): the first successful submit
        ends the checkmark hint, the first change sale ends the what-is-
        change framing, the first column ends the glowing-box hint. */
@@ -626,7 +657,7 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
       <div class="success">
         <div class="success-big">You earned $${o.total}!</div>
         <div class="success-sub">$${o.total} went into your wallet!</div>
-        ${exact ? `<div class="success-sub">${c.name} paid just right. No money back needed!</div>` : ''}
+        ${exact ? `<div class="success-sub">${c.name} paid exactly $${o.total}!</div>` : ''}
         ${change !== null && change > 0 ? `<div class="success-sub">You gave ${c.name} $${change} back!</div>` : ''}
         ${sale.phase === 'drawer' ? `<div class="success-sub">$${o.total} and $${change} makes $${o.problem.m}.</div>` : ''}
         <div class="bark">${pickOne(c.happy)}</div>

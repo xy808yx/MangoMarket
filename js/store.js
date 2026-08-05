@@ -44,6 +44,17 @@ const NUDGES = ['Hmm, try again!', 'So close! One more try!', 'Almost! Look agai
 
 const $ = id => document.getElementById(id);
 
+/* Hint slots, rendered as part of the body so a new phase clears them and the
+   nodes exist before makeColumn runs (its first borrow mark fires inside its
+   own constructor). Full card width, BELOW the entry row. The key-naming hint
+   used to be appended into the keypad host, which makeKeypad turns into a grid
+   of three 76px columns, so the hint became a thirteenth key: 76px wide, 129px
+   tall, one word per line. Mirrors stand.js exactly. */
+const HINTS = '<div class="assist-hint" id="colHint"></div>'
+  + '<div class="assist-hint" id="keyHint"></div>';
+
+const setHint = (id, text) => { const el = $(id); if (el) el.textContent = text; };
+
 export function initGame() {
   const state = loadSave();
   const engine = createEngine({ state, persist: saveSave });
@@ -725,7 +736,8 @@ export function initGame() {
         <div class="entry-wrap">
           <div id="entryArea"><div class="pad-display" id="padDisplay"></div></div>
           <div id="keypadHost"></div>
-        </div>`;
+        </div>
+        ${HINTS}`;
       keypad = makeKeypad($('keypadHost'), {
         onDigit: d => onDigit(d),
         onBack: () => onBack(),
@@ -855,7 +867,8 @@ export function initGame() {
       <div class="entry-wrap">
         <div id="entryArea"></div>
         <div id="keypadHost"></div>
-      </div>`;
+      </div>
+      ${HINTS}`;
     keypad = makeKeypad($('keypadHost'), {
       onDigit: d => onDigit(d),
       onBack: () => onBack(),
@@ -870,8 +883,7 @@ export function initGame() {
        mistyped digit had no visible way out and she submitted a typo as a
        maths error. Name both once; goTaught retires the hint. */
     if (!kvLoad('goTaught', 0)) {
-      $('keypadHost').insertAdjacentHTML('beforeend',
-        `<div class="assist-hint">Tap ✓ when you are done. Tap ⌫ to erase.</div>`);
+      setHint('keyHint', 'Tap ✓ when you are done. Tap ⌫ to erase.');
     }
     if (p.entry === 'column') {
       mountColumn($('entryArea'), p, w => { cur.colW = w; });
@@ -897,17 +909,17 @@ export function initGame() {
      a borrowOut column RECEIVES the ten, a borrowIn column PAID for it, and
      one sentence cannot serve both. Mirrors stand.js mountColumn. */
   function mountColumn(host, p, assign) {
-    host.innerHTML = '<div id="colHost"></div><div class="assist-hint" id="colHint"></div>';
+    host.innerHTML = '<div id="colHost"></div>';
     if (!kvLoad('colTaught', 0)) {
-      $('colHint').textContent = 'Start in the orange box.';
+      setHint('colHint', 'Start in the orange box.');
     }
     assign(makeColumn($('colHost'), columns(p.m, p.s), {
       marks: p.stage === 0,
       onMark: (i, shown, c) => {
         if ((cur && cur.assist) || kvLoad('borrowTaught', 0)) return;
-        $('colHint').textContent = c.borrowOut
+        setHint('colHint', c.borrowOut
           ? `${c.top} is too small, so it takes a ten from next door. Now it is ${shown}. Use ${shown}!`
-          : `This one gave a ten away. ${c.top} is now ${shown}.`;
+          : `This one gave a ten away. ${c.top} is now ${shown}.`);
       }
     }));
   }
@@ -1024,8 +1036,9 @@ export function initGame() {
       digits: digitsOf(cur.deal.sale).reverse(), at: 0, col: false,
       answer: cur.deal.sale, deal: true
     };
-    $('entryArea').innerHTML = `<div class="pad-display" id="padDisplay"></div>
-      <div class="assist-hint">Tap these numbers on the keypad!</div>`;
+    $('entryArea').innerHTML = `<div class="pad-display" id="padDisplay"></div>`;
+    setHint('colHint', 'Tap these numbers on the keypad!');
+    setHint('keyHint', '');
     paintAssist();
     keypad && keypad.setGo(false);
   }
@@ -1061,14 +1074,15 @@ export function initGame() {
          so "tap the glowing box" would be met with silence. */
       mountColumn($('entryArea'), { m: p.m, s: p.s, stage: 0 }, w => { cur.colW = w; });
       const expect = cur.colW.guide(0);
-      $('colHint').textContent =
-        'The glowing box shows the number. Tap that number on the keypad!';
+      setHint('colHint',
+        'The glowing box shows the number. Tap that number on the keypad!');
+      setHint('keyHint', '');
       cur.assist = { i: 0, expect, col: true, n: columns(p.m, p.s).length };
     } else {
       cur.assist = { digits: digitsOf(p.answer).reverse(), at: 0, col: false, answer: p.answer };
-      const el = $('entryArea');
-      el.innerHTML = `<div class="pad-display" id="padDisplay"></div>
-        <div class="assist-hint">Tap these numbers on the keypad!</div>`;
+      $('entryArea').innerHTML = `<div class="pad-display" id="padDisplay"></div>`;
+      setHint('colHint', 'Tap these numbers on the keypad!');
+      setHint('keyHint', '');
       paintAssist();
     }
     keypad && keypad.setGo(false);

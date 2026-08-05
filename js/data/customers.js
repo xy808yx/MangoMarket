@@ -13,26 +13,37 @@ export const CUSTOMERS = [
     trait: { tender: 100 },
     hello: ['Quack! All I have is a $100 bill!', 'Quack quack! Lemonade day!'],
     happy: ['Quack! Big bills are easy for you!', 'Best stand in town. Quack!'] },
+  /* Miso's lines may not mention money coming back. She pays exactly, so the
+     gentle-first-session rule pins her first on every fresh save, which makes
+     her hello the first sentence the game ever says at the stand, and the
+     first change sale (with its teaching prompt) has not happened yet. */
   { id: 'miso', name: 'Miso', species: 'cat',
     trait: { exact: true },
-    hello: ['My money is just right. It always is.', 'Mrow. No money back for me!'],
+    hello: ['Mrow. One lemonade, please!', 'Mrow. I brought my money.'],
     happy: ['Perfect. As expected.', 'Mrow. See you tomorrow.'] },
   { id: 'fern', name: 'Fern', species: 'fox',
     trait: { tender: 50 },
     hello: ['All I have is one big $50 bill!', 'A big bill! Can you count it out?'],
     happy: ['Clever change, clever bunny!', 'You are as clever as a fox!'] },
-  { id: 'maple', name: 'Maple', species: 'beaver',
-    hello: ['Chewing wood is thirsty work!', 'Straight from the river. So thirsty!'],
-    happy: ['Back to the dam. Thanks!', 'Tastes better than river water!'] },
-  { id: 'rocky', name: 'Rocky', species: 'raccoon',
-    hello: ['Fresh lemonade! My favorite!', 'I washed my paws, promise!'],
-    happy: ['Worth every dollar!', 'So good I want seconds!'] },
-  { id: 'bella', name: 'Bella', species: 'deer',
-    hello: ['A twirl, a sip, a twirl!', 'Dancers get so thirsty!'],
-    happy: ['Lovely! Time to twirl home.', 'So yummy! Time to dance!'] },
-  { id: 'ollie', name: 'Ollie', species: 'otter',
-    hello: ['Just swam the whole bay!', 'Splashy and ready for lemonade!'],
-    happy: ['Splash! That was great!', 'That was splashy good!'] },
+  /* The four toys. They took the slots of four flavour-only regulars (a
+     beaver, a raccoon, a deer and an otter) rather than growing the roster:
+     the queue length comes from engine.standVisits(), so a bigger roster
+     would only make any one friend rarer. Pip stayed because Pip's line is
+     the only thing tying the stand to Uncle Benny across town.
+     NO TRAITS on any of them, on purpose: traits are what standOrder reads,
+     and the curve was tuned and sim-verified against exactly three. */
+  { id: 'taio', name: 'Taio', species: 'panda',
+    hello: ['Bamboo makes me so thirsty!', 'Hi! One lemonade for a panda!'],
+    happy: ['That was lovely. Nap time!', 'Thank you! You are the best.'] },
+  { id: 'hippy', name: 'Hippy', species: 'hippo',
+    hello: ['A big hippo needs a big drink!', 'Hippo coming through!'],
+    happy: ['Splish splash, thank you!', 'Back to my puddle. Bye!'] },
+  { id: 'shasha', name: 'Shasha', species: 'lion',
+    hello: ['Roar! I mean, hello!', 'Roaring all day is thirsty work.'],
+    happy: ['Roar! That was great!', 'My mane feels fluffier already!'] },
+  { id: 'uncorn', name: 'Uncorn', species: 'unicorn',
+    hello: ['Sparkle sparkle! Lemonade please!', 'I came here on a rainbow!'],
+    happy: ['Sparkly! Thank you!', 'Off to find more rainbows!'] },
   { id: 'sunny', name: 'Pip', species: 'cub',
     hello: ['Uncle Benny says yours is the best!', 'Hi hi hi! Lemonade please!'],
     happy: ['Wow wow wow! Thank you!', 'I am telling everyone at school!'] }

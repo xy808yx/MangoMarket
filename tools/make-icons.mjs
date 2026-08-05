@@ -1,6 +1,27 @@
-/* Generates icons/icon-192.png and icons/icon-512.png with no dependencies.
- * Flat marks only: cream rounded square, mango ellipse, leaf. Same pure-node
- * Pure-node PNG approach, no image libraries.
+/* Generates every icon the game ships, with no dependencies.
+ *
+ * Pixel art: each design is a 16x16 character grid, scaled by an INTEGER
+ * factor with nearest-neighbour sampling, so 192 (x12) and 512 (x32) are
+ * exact and stay crisp. No antialiasing anywhere; the blocky edge is the
+ * point, and it matches a game built out of voxels.
+ *
+ *   icons/icon-192.png   fruit stand          (PWA + apple-touch-icon)
+ *   icons/icon-512.png   fruit stand          (PWA install / splash)
+ *   icons/favicon-32.png awning over a cup    (browser tab)
+ *   icons/favicon-16.png awning over a cup    (browser tab)
+ *
+ * Two designs on purpose. The stand is the better mark and reads at any size
+ * a launcher uses, but at 16px its stripes, posts and counter collapse into
+ * mush. So the tab keeps only the two parts of the stand that survive being
+ * that small: a band of awning stripes across the top, and one lemonade cup
+ * under it. Deliberately not the fruit on its own, which is too generic a
+ * shape to identify this app at a glance in a row of tabs.
+ *
+ * FULL BLEED is not a style choice on the app icons. iOS ignores alpha in an
+ * apple-touch-icon and composites what is left onto black, so a rounded
+ * design with transparent corners ships with four black wedges around it.
+ * The launcher draws the rounded corner; the icon must fill its square.
+ *
  * Run: node tools/make-icons.mjs
  */
 import { deflateSync } from 'node:zlib';
@@ -12,14 +33,70 @@ const here = dirname(fileURLToPath(import.meta.url));
 const outDir = join(here, '..', 'icons');
 mkdirSync(outDir, { recursive: true });
 
-const BG    = [0xFF, 0xF6, 0xE8];   // cream
-const MANGO = [0xFF, 0xB7, 0x28];   // mango orange
-const BLUSH = [0xF5, 0x8A, 0x2E];   // deeper mango
-const LEAF  = [0x3E, 0x8E, 0x4E];   // leaf green
+/* ---- palette. Game colours, not new ones: cream is the card/paper cream,
+   mango and deep mango are the wallet and price colours, the awning red and
+   white are the locked Phase 1 stall, leaf is the leaf. ---- */
+const PAL = {
+  '.': null,                    // transparent (the app icon's corners, filled)
+  c: [0xFF, 0xF6, 0xEA],        // cream
+  m: [0xFF, 0xB7, 0x28],        // mango
+  l: [0x3E, 0x8E, 0x4E],        // leaf
+  r: [0xF0, 0x4E, 0x3E],        // awning red
+  w: [0xFF, 0xFF, 0xFF],        // awning white
+  y: [0xFF, 0xD3, 0x4D],        // lemonade
+  b: [0x9B, 0x6A, 0x3C],        // wood
+  k: [0x3A, 0x2A, 0x1A]         // outline
+};
 
+/* The app mark: a market stall under a red-and-white striped awning with
+   mangoes on the counter. */
+const STAND = [
+  '..cccccccccccc..',
+  '.cccccccccccccc.',
+  'cccccccccccccccc',
+  'ccrwwrrwwrrwwrcc',
+  'crrwwrrwwrrwwrrc',
+  'ckkkkkkkkkkkkkkc',
+  'cckcccccccccckcc',
+  'cckcmmccccmmckcc',
+  'cckcmmmccmmmckcc',
+  'cckcllccccllckcc',
+  'cckkkkkkkkkkkkcc',
+  'ccbbbbbbbbbbbbcc',
+  'ccbccccccccccbcc',
+  'ccbccccccccccbcc',
+  '.cbccccccccccbc.',
+  '..cccccccccccc..'
+];
+
+/* The tab mark, for 16 and 32 pixels: a band of awning over one cup of
+   lemonade. Four rows of stripe is the most that can shrink to 16px and still
+   read as stripes rather than as noise, and the dark rail under them is what
+   keeps the white stripes from bleeding into the cream below. Full bleed, so
+   the square edge does the work a rounded corner cannot do at this size. */
+const AWNING_CUP = [
+  'rrrrwwwwrrrrwwww',
+  'rrrrwwwwrrrrwwww',
+  'rrrrwwwwrrrrwwww',
+  'rrrrwwwwrrrrwwww',
+  'kkkkkkkkkkkkkkkk',
+  'cccccccccccccccc',
+  'ccccccccccrccccc',
+  'cccccccccrcccccc',
+  'cckkkkkkkkkkkkcc',
+  'cckyyyyyyyyyykcc',
+  'ccckyyyyyyyykccc',
+  'ccckyyyyyyyykccc',
+  'cccckyyyyyykcccc',
+  'cccckyyyyyykcccc',
+  'ccccckyyyykccccc',
+  'cccccckkkkcccccc'
+];
+
+/* ---- PNG writer: pure node, no image libraries ---- */
 const crcTable = (() => {
   const t = new Int32Array(256);
-  for (let n = 0; n < 256; n++){
+  for (let n = 0; n < 256; n++) {
     let c = n;
     for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
     t[n] = c;
@@ -27,13 +104,13 @@ const crcTable = (() => {
   return t;
 })();
 
-function crc32(buf){
+function crc32(buf) {
   let c = -1;
   for (let i = 0; i < buf.length; i++) c = crcTable[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
   return (c ^ -1) >>> 0;
 }
 
-function chunk(type, data){
+function chunk(type, data) {
   const len = Buffer.alloc(4);
   len.writeUInt32BE(data.length);
   const body = Buffer.concat([Buffer.from(type, 'ascii'), data]);
@@ -42,7 +119,7 @@ function chunk(type, data){
   return Buffer.concat([len, body, crc]);
 }
 
-function png(width, height, rgba){
+function png(width, height, rgba) {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(width, 0);
   ihdr.writeUInt32BE(height, 4);
@@ -50,7 +127,7 @@ function png(width, height, rgba){
   ihdr[9] = 6;    // truecolour + alpha
   const raw = Buffer.alloc((width * 4 + 1) * height);
   let p = 0;
-  for (let y = 0; y < height; y++){
+  for (let y = 0; y < height; y++) {
     raw[p++] = 0;  // filter: none
     rgba.copy(raw, p, y * width * 4, (y + 1) * width * 4);
     p += width * 4;
@@ -63,63 +140,46 @@ function png(width, height, rgba){
   ]);
 }
 
-const inRoundRect = (x, y, w, h, r) => (px, py) => {
-  if (px < x || py < y || px > x + w || py > y + h) return false;
-  const cx = Math.min(Math.max(px, x + r), x + w - r);
-  const cy = Math.min(Math.max(py, y + r), y + h - r);
-  const dx = px - cx, dy = py - cy;
-  return dx * dx + dy * dy <= r * r;
-};
+/* A wrong character or a short row would render as a silent hole, so check
+   the grid before drawing it rather than after looking at the result. */
+function validate(name, rows) {
+  if (rows.length !== 16) throw new Error(`${name}: ${rows.length} rows, need 16`);
+  rows.forEach((row, i) => {
+    if (row.length !== 16) throw new Error(`${name} row ${i}: ${row.length} chars, need 16`);
+    for (const ch of row) {
+      if (!(ch in PAL)) throw new Error(`${name} row ${i}: unknown colour '${ch}'`);
+    }
+  });
+}
 
-// Rotated ellipse: centre (cx,cy), radii (rx,ry), rotation in radians.
-const inEllipse = (cx, cy, rx, ry, rot = 0) => (px, py) => {
-  const c = Math.cos(-rot), s = Math.sin(-rot);
-  const dx = px - cx, dy = py - cy;
-  const ex = (dx * c - dy * s) / rx;
-  const ey = (dx * s + dy * c) / ry;
-  return ex * ex + ey * ey <= 1;
-};
-
-function render(size){
-  const S = 4;                       // supersample factor
+function render(rows, size, { bleed = false } = {}) {
+  if (size % 16 !== 0) throw new Error(`${size} is not a multiple of 16`);
+  const scale = size / 16;
   const buf = Buffer.alloc(size * size * 4);
-  const u = size / 100;              // design units on a 100x100 grid
-
-  const bg    = inRoundRect(0, 0, 100 * u, 100 * u, 22 * u);
-  // Mango body: fat tilted ellipse, slightly low-left of centre.
-  const body  = inEllipse(48 * u, 56 * u, 30 * u, 24 * u, -0.35);
-  // Blush: overlapping ellipse offset to the lower right, clipped to body.
-  const blush = inEllipse(58 * u, 63 * u, 22 * u, 16 * u, -0.35);
-  // Leaf: slim rotated ellipse at the stem end (upper right of the body).
-  const leaf  = inEllipse(74 * u, 27 * u, 13 * u, 5.5 * u, -0.7);
-
-  for (let y = 0; y < size; y++){
-    for (let x = 0; x < size; x++){
-      let rSum = 0, gSum = 0, bSum = 0, aSum = 0;
-      for (let sy = 0; sy < S; sy++){
-        for (let sx = 0; sx < S; sx++){
-          const px = x + (sx + 0.5) / S;
-          const py = y + (sy + 0.5) / S;
-          let col = null;
-          if (bg(px, py)){
-            col = BG;
-            if (body(px, py)) col = blush(px, py) ? BLUSH : MANGO;
-            if (leaf(px, py)) col = LEAF;
-          }
-          if (col){ rSum += col[0]; gSum += col[1]; bSum += col[2]; aSum += 255; }
-        }
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const ch = rows[Math.floor(y / scale)][Math.floor(x / scale)];
+      const col = PAL[ch] || (bleed ? PAL.c : null);
+      const i = (y * size + x) * 4;
+      if (col) {
+        buf[i] = col[0]; buf[i + 1] = col[1]; buf[i + 2] = col[2]; buf[i + 3] = 255;
       }
-      const n = S * S, i = (y * size + x) * 4;
-      buf[i]     = Math.round(rSum / n);
-      buf[i + 1] = Math.round(gSum / n);
-      buf[i + 2] = Math.round(bSum / n);
-      buf[i + 3] = Math.round(aSum / n);
     }
   }
   return png(size, size, buf);
 }
 
-for (const size of [192, 512]){
-  writeFileSync(join(outDir, `icon-${size}.png`), render(size));
-  console.log(`icons/icon-${size}.png`);
+validate('stand', STAND);
+validate('awning-cup', AWNING_CUP);
+
+const built = [
+  ['icon-192.png', render(STAND, 192, { bleed: true })],
+  ['icon-512.png', render(STAND, 512, { bleed: true })],
+  ['favicon-32.png', render(AWNING_CUP, 32)],
+  ['favicon-16.png', render(AWNING_CUP, 16)]
+];
+
+for (const [name, data] of built) {
+  writeFileSync(join(outDir, name), data);
+  console.log(`icons/${name}  ${data.length} bytes`);
 }
