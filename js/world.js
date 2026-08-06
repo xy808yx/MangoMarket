@@ -1058,8 +1058,14 @@ export function createWorld({ canvas, palette, onTapAisle, onTapStall, onTapHous
   ]);
   blockAt(2, -8);
 
-  /* The sparkle marks. Stall and grocery and house are always live;
-     shopfront twinkles light with their unlock in setAisleOpen. */
+  /* The sparkle marks. Only the stall is always live: it is in the plaza,
+     which is open from the first second. The grocery and the house live in
+     zones that start fenced, so their sparkles are gated in setZoneLife
+     alongside Benny and the ambient pair. Sparkle means THIS WORKS NOW, and
+     both taps are answered with silence while their zone is shut (tapGrocery
+     and tapHouse both require the zone), so an ungated mark was the same lie
+     as a sparkle on a tarped gondola. Shopfront twinkles light with their
+     unlock in setAisleOpen. */
   const twinkles = [];
   twinkles.push(buildTwinkle(stall, -1.2, 3.35, -0.6));
   twinkles.push(buildTwinkle(stall, 1.5, 3.15, -1.6));
@@ -1070,7 +1076,8 @@ export function createWorld({ canvas, palette, onTapAisle, onTapStall, onTapHous
   house.rotation.y = 1.05;
   house.userData.houseTap = true;
   scene.add(house);
-  twinkles.push(buildTwinkle(house, 0, 3.15, 0.5));
+  const houseTwinkle = buildTwinkle(house, 0, 3.15, 0.5);
+  twinkles.push(houseTwinkle);
   blockRect(-49, -45, -36, -32);
   const YARD = { x0: -54, x1: -40, z0: -41, z1: -21, gz0: -32, gz1: -30 };
   const yard = new THREE.Group();
@@ -1141,7 +1148,8 @@ export function createWorld({ canvas, palette, onTapAisle, onTapStall, onTapHous
   grocery.position.set(0, 0, -64.5);
   grocery.userData.groceryTap = true;
   scene.add(grocery);
-  twinkles.push(buildTwinkle(grocery, 1.8, 4.15, 1.6));
+  const groceryTwinkle = buildTwinkle(grocery, 1.8, 4.15, 1.6);
+  twinkles.push(groceryTwinkle);
   blockRect(-4, 4, -67, -62);
   trees.push(
     buildTree(scene, P, -8, -66, 0.8),
@@ -1425,10 +1433,13 @@ export function createWorld({ canvas, palette, onTapAisle, onTapStall, onTapHous
      and her stand on screen, which is the whole point: a first-timer
      could not tell which animal she was. Benny keeps the shop
      street; the duck and the cat move in with the park. */
+  /* ZONE_ORDER indices: plaza 0, road 1, park 2, shops 3, home 4, grove 5. */
   function setZoneLife() {
     benny.visible = zoneIsOpen(3);
     duck.visible = zoneIsOpen(2);
     cat.visible = zoneIsOpen(2);
+    groceryTwinkle.visible = zoneIsOpen(1);
+    houseTwinkle.visible = zoneIsOpen(4);
   }
 
   function setZones(open, opts = {}) {
@@ -1622,7 +1633,18 @@ export function createWorld({ canvas, palette, onTapAisle, onTapStall, onTapHous
   /* With a preference point (the walker's tile), ties at the same ring
      radius resolve to the tapper's side of the prop: a fence tap from
      inside the yard must land just inside the fence, not on the far side
-     and around the whole perimeter. */
+     and around the whole perimeter.
+
+     RETURNS NULL when nothing is open inside the radius, and that is load
+     bearing. Both callers were already written against a null (route does
+     `s && nearestOpen(...)`, walkTo does `if (!t) return`), but this used to
+     hand back the CLOSED tile it was given, so neither guard could ever
+     fire: walkTo hopped to a tile inside a fenced chunk, astar could not
+     reach a closed goal and returned null, and route's straight-line rescue
+     then walked her clean through the hedge. One ground tap deep enough
+     inside a locked zone opened the whole town from the first screen.
+     Measured on a fresh save: tap (-17, -43) with only the plaza earned and
+     she arrived in the park, five hops, no fence in the way. */
   function nearestOpen(ix, iz, pix, piz) {
     if (isOpen(ix, iz)) return { ix, iz };
     const hasPref = pix !== undefined;
@@ -1639,7 +1661,7 @@ export function createWorld({ canvas, palette, onTapAisle, onTapStall, onTapHous
       }
       if (best) return best;
     }
-    return { ix, iz };
+    return null;
   }
 
   /* Exact supercover walk of the grid under the segment (Amanatides-Woo):

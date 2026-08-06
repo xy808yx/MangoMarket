@@ -134,7 +134,18 @@ export function initGame() {
   });
 
   function tapHouse() {
-    if (mode !== 'plaza' || !zonesOpen.has('home')) return;
+    if (mode !== 'plaza') return;
+    /* A tap is never met with silence. Her house is a landmark she can see
+       and walk right up to from the ring road for many sessions before the
+       home zone is hers, and the raycast consumes the tap, so without these
+       words the building was deader than the empty grass beside it (which
+       already answers, via tapGround). Same sentence as tapGround's generic
+       branch so the two cannot tell her different unlock stories. Gating the
+       sparkle removed the false promise; this removes the silence. */
+    if (!zonesOpen.has('home')) {
+      toast('Not open yet! Keep playing and it will open.', 3000);
+      return;
+    }
     $('quest').classList.add('hidden');
     $('wish').classList.add('hidden');
     $('book').classList.add('hidden');
@@ -391,6 +402,13 @@ export function initGame() {
        is the only verb that exists there. Teach it on arrival if she has not
        found it yet. */
     park: () => {
+      /* Leave the food store first, exactly as goToAisle does. The park is
+         won by mastering single-digit facts, which live in produce, which is
+         INDOOR: so the card that hands her a whole new chunk of town almost
+         always fires from the grocery, where closeShelf hands mode back to
+         'grocery' and not 'plaza'. Without this the reward button pressed
+         down and did nothing, and cardDone had already retired the card. */
+      if (inGrocery) leaveGrocery();
       if (mode !== 'plaza') return;
       world.walkTo(-17, -43);
       firstHint('hintWalk', 'Tap the ground to walk anywhere you like!');
@@ -399,8 +417,19 @@ export function initGame() {
       if (state.aisles.includes('toys')) goToAisle('toys');
       else if (mode === 'plaza') world.walkTo(41, -33);
     },
-    home: () => tapHouse(),
+    /* Same guard again. Her house is won by mastering the two-digit tiers,
+       which normally happens at the toy shop, but a review slot or an
+       escalated tender can put a two-digit problem on a produce item, so
+       this card can fire from inside the grocery too. */
+    home: () => {
+      if (inGrocery) leaveGrocery();
+      tapHouse();
+    },
     grove: () => {
+      /* Same guard as the park. The grove is won on an electronics purchase,
+         which is an outdoor shop, so this is defensive rather than the daily
+         path, but the two ground-tap zones must not differ here. */
+      if (inGrocery) leaveGrocery();
       if (mode !== 'plaza') return;
       world.walkTo(26, 1);
       firstHint('hintWalk', 'Tap the ground to walk anywhere you like!');
@@ -468,15 +497,35 @@ export function initGame() {
   let goalSig = null;
   let goalClock = 0;
 
+  /* The pill is live wherever panels are (plaza, shelf, grocery), but
+     tapStall only answers from the plaza, so "Sell lemonade at your stand"
+     was a bright dead tap for anyone standing in the food store with the
+     shopping list finished. Get her out of the shop first, the way goToAisle
+     and the zone cards do, then hop. Same rule as the chips right above:
+     a control that presses down and does nothing is a lie. */
+  /* Byte for byte the sequence the wishlist's sell row already uses, and the
+     order is load bearing: panels down, THEN closeShelf (which hands mode
+     back to 'grocery' when she is indoors), THEN leaveGrocery, THEN hop. A
+     sheet left standing during the walk is the Phase 4 mode-corruption
+     class. */
+  function goStand() {
+    $('quest').classList.add('hidden');
+    $('wish').classList.add('hidden');
+    $('book').classList.add('hidden');
+    closeShelf();
+    if (inGrocery) leaveGrocery();
+    tapStall();
+  }
+
   function goalNow() {
     if (!zonesOpen.has('road')) {
-      return { text: 'Sell lemonade at your stand', stars: standStars(), act: tapStall };
+      return { text: 'Sell lemonade at your stand', stars: standStars(), act: goStand };
     }
     const slot = trip.slots.find(s => !s.bought);
     if (slot && BY_ID[slot.itemId]) {
       return { text: `Go and buy: ${BY_ID[slot.itemId].name}`, act: () => goRow(slot) };
     }
-    return { text: 'Sell lemonade at your stand', act: tapStall };
+    return { text: 'Sell lemonade at your stand', act: goStand };
   }
 
   function tickGoal(dt) {
@@ -1178,6 +1227,17 @@ export function initGame() {
     const change = p.mechanic === 'wallet' ? null : p.answer;
     const cw = $('cardWallet');
     if (cw) cw.textContent = `Wallet $${state.wallet}`;
+    /* The × goes with the question it belonged to. It used to survive into
+       this card still bright and pressable, and cancelBuy refuses a submitted
+       purchase, so it pressed down under her finger and did nothing on EVERY
+       successful buy. Mirrors the stand's celebration card, and the same rule
+       the chips and the go key follow: a control must never answer with
+       silence. The prompt goes with it: leaving "How much change do you get?"
+       standing over "You got it!" re-poses a question she has just answered,
+       and on the first-change card that is three lines of it. */
+    const bx = $('buyClose');
+    if (bx) bx.style.visibility = 'hidden';
+    $('buyPrompt').innerHTML = '';
     const taughtNow = firstChange && change > 0
       ? `<div class="success-sub">$${change} back! That is your change.</div>`
       : change !== null && change > 0
@@ -1475,12 +1535,20 @@ export function initGame() {
          shelf tap (trips dodge this conflict by exclusion; the wishlist
          meets it head on). The sale price stays a mystery here too. */
       const onDeal = deal && deal.itemId === w.id;
-      const cost = onDeal ? deal.sale : w.price;
+      /* TODAY's price, not the one she wished at. Shelf prices are date
+         seeded (shelfPrice(itemId, day) in data/items.js), so a wish made
+         yesterday used to show and CHARGE yesterday's number while the shelf
+         two taps away showed a different one for the same thing. In a game
+         whose whole subject is what things cost, the shelf has to be the
+         truth. w.price stays in the save (the schema is frozen and sim
+         verified) and is simply no longer read. */
+      const base = priceFor(w.id);
+      const cost = onDeal ? deal.sale : base;
       const can = engine.canAfford(cost) && state.aisles.includes(item.aisle);
       row.innerHTML = `
         <img alt="" src="${world.thumbnail(item)}">
         <span class="q-name">${item.name}</span>
-        <span class="q-price">${onDeal ? `<s>$${deal.base}</s> $?` : '$' + w.price}</span>
+        <span class="q-price">${onDeal ? `<s>$${deal.base}</s> $?` : '$' + base}</span>
         ${can ? '<button class="mini-btn">Get it!</button>' : ''}`;
       if (can) {
         row.querySelector('button').addEventListener('click', () => {

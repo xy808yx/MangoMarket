@@ -352,11 +352,13 @@ body {
    (one handler on the row, so a tap anywhere works). */
 .q-row.go { cursor: pointer; }
 .q-row.go:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(43, 33, 24, 0.18); }
+/* Same reason as the captions: 0.55 on the paper row is 3.6:1, and this line
+   is the only thing that says WHERE the quest item lives. 0.7 is 5.8:1. */
 .q-place {
   display: block;
   font-size: 17px;
   font-weight: 700;
-  color: rgba(43, 33, 24, 0.55);
+  color: rgba(43, 33, 24, 0.7);
 }
 .q-greet {
   font-size: 24px;
@@ -466,10 +468,17 @@ body {
    the same drawing meant "a customer", "a price" and "a thing I am making"
    on one screen. Captions plus a non-cup queue token are the fix, and they
    are the same fix: a picture may mean exactly one thing per card. */
+/* 0.72, not 0.6. Captions are set back from the ink so the picture leads,
+   but 0.6 renders 128/118/108 on cream, which is 4.15:1 and misses the 4.5:1
+   floor this palette already holds itself to (see --mango-deep). It matters
+   most on the stand card: the friends count is a caption on an iPad and the
+   ONLY queue UI on a phone, where the tokens are hidden. 0.72 measures 6.0:1
+   and still sits clearly behind the name and the bark. One shade for every
+   caption in the game: few sizes, few faces, high contrast. */
 .bills-cap, .block-cap {
   font-size: 18px;
   font-weight: 700;
-  color: rgba(43, 33, 24, 0.6);
+  color: rgba(43, 33, 24, 0.72);
 }
 
 .bills-cap { margin-top: 8px; }
@@ -750,33 +759,60 @@ body {
 /* The friends still to serve, so a session has a visible arc. It FILLS as she
    works, so it reads as "look what I did" and not a chore list burning down.
    Faces are still out (they would spoil "Here comes Fern!" and telegraph the
-   $50 drawer), but these used to be CUP thumbnails, and the same card also
-   shows cups as a price menu and cups as the order: one drawing, three
-   meanings, none of them written down. A dot is not a cup, and the caption
-   says what the row counts. */
+   $50 drawer), and these are not CUP thumbnails either: the same card shows
+   cups as a price menu and cups as the order, and one drawing may mean exactly
+   one thing per card.
+
+   WORDS ON TOP, TOKENS UNDER. The dot version of this row was tested on a real
+   iPad and did not read as the queue, and the measurements say why: the three
+   states were separated by COLOUR ALONE at 10px, with the waiting ones at 35%
+   opacity, in a strip 19px tall sitting directly under the customer's face, so
+   it read as something belonging to that animal. So: the count is now a
+   sentence (the thing she actually wants to know is how many are left, and
+   this game already asks her to read for everything else on the card), the
+   states are DRAWN rather than tinted (a tick for served, a ring for the one
+   at the counter), and the waiting tokens are solid outlines, not ghosts.
+   The sentence IS the caption for the group, which is why there is no second
+   "Friends today" label: two labels over one picture group would be the
+   crowding the caption rule exists to stop. */
 .stand-queue {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 5px;
   margin: 6px 0 2px;
 }
 
 .stand-queue .block-cap { margin: 0; }
 
-.queue-dots { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+.queue-dots {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
 
 .qd {
-  width: 14px;
-  height: 14px;
+  width: 26px;
+  height: 26px;
   border: 3px solid var(--ink);
   border-radius: 50%;
   background: var(--paper);
-  opacity: 0.35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
 }
 
-.qd-done { background: var(--leaf); opacity: 1; }
-.qd-now { background: var(--mango); opacity: 1; }
+.qd-done { background: var(--leaf); }
+/* The ring, not just the fill: at these sizes a colour swap alone is exactly
+   what failed before. --red at 35% so it reads as a halo and not a second
+   border competing with the ink one. */
+.qd-now { background: var(--mango); box-shadow: 0 0 0 4px rgba(240, 78, 62, 0.35); }
 
 /* The judge card is the only yes/no question in the game, and Benny is wrong
    40% of the time. Neither answer may wear the go-green that every other
@@ -1138,8 +1174,15 @@ body {
   .success-sub { font-size: 20px; }
   .drawer-count { font-size: 38px; }
   .drawer-goal { font-size: 20px; }
-  .qd { width: 10px; height: 10px; border-width: 2px; }
-  .stand-queue { gap: 8px; }
+  /* This is the SHORT-BUT-WIDE tier, which after the token rule at the bottom
+     of this file means iPad landscape and the 703x784 split view and nothing
+     else: a phone is under 620px wide, so it never shows tokens at all. 12
+     tokens is the full-town session; at 20px with a 6px gap that is 306px,
+     one row inside the narrowest card that still draws them. */
+  .qd { width: 20px; height: 20px; border-width: 2px; font-size: 12px; }
+  .qd-now { box-shadow: 0 0 0 3px rgba(240, 78, 62, 0.35); }
+  .queue-dots { gap: 6px; }
+  .stand-queue { gap: 4px; }
 }
 
 /* Side by side needs about 480px of content width (a three-column scaffold
@@ -1172,8 +1215,12 @@ body {
   .buy-price { font-size: 24px; }
   .buy-prompt { font-size: 16px; line-height: 1.25; margin: 2px 2px 0; }
   .bark { font-size: 15px; padding: 3px 10px; margin: 2px 0 0; }
-  .stand-queue { margin: 0; gap: 6px; }
-  .qd { width: 8px; height: 8px; }
+  /* No .qd rules here. Every viewport this tier matches is also inside the
+     token rule at the bottom of the file (max-height: 460px hides .queue-dots
+     outright), so a size, a gap and a ring here would all be dead the day
+     they were written. This file has been burned by dead media queries once
+     already; the margin below is the only queue rule that still paints. */
+  .stand-queue { margin: 0; gap: 2px; }
   .block-cap, .bills-cap { font-size: 14px; }
   .bills-cap { margin-top: 2px; }
   .buy-nudge { min-height: 14px; font-size: 16px; }
@@ -1209,4 +1256,31 @@ body {
   .drawer-bills { gap: 5px; }
   .bill { font-size: 15px; padding: 4px 8px; }
   .bills { gap: 4px; margin: 4px 0; }
+}
+
+
+/* TOKENS WHERE THEY FIT, WORDS EVERYWHERE.
+   Stacking the count over the tokens costs 24px against the old one-line row,
+   and on a 393x852 phone the tallest stand card (first-ever change, so the
+   long teaching prompt, plus a scaffolded column and the borrow narration)
+   had exactly ZERO slack: measured 820px against its own 820px cap. The 24px
+   went straight into overflow and pushed the borrow hint under the fold,
+   which is the class of defect the last pass existed to remove.
+   Side by side does not rescue it either: at 321px of card width the caption
+   wraps to two lines AND the tokens wrap to two rows, which measured 46px,
+   worse than stacking.
+   So the phone tiers keep the sentence and drop the tokens. The sentence is
+   the part that carries the count, the tokens are the part that needs room,
+   and both iPad orientations (where this was judged on the device) keep the
+   full treatment. Measured after: 393x852 overflow 0, 852x393 unchanged.
+   This block is LAST on purpose, so it wins over the tiers above it. */
+@media (max-width: 620px), (max-height: 460px) {
+  .queue-dots { display: none; }
+}
+
+/* Phone portrait only. The landscape-phone tier above already zeroes this
+   margin and must keep winning there, so this cannot be folded into the
+   rule above without giving 6px back to the shortest card in the game. */
+@media (max-width: 620px) and (min-height: 461px) {
+  .stand-queue { margin: 4px 0 2px; }
 }

@@ -161,6 +161,25 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
   }
 
   /* ---- card shell ---- */
+  /* The same glyph the go key and the quest ticks use. */
+  const TICK = '✓';
+
+  /* The words over the token row. This answers the question she is actually
+     asking, which is how many are still to come, so it counts the friends
+     AFTER the one at the counter. It is deliberately not "4 of 12": a total
+     is a fact about the session, a remainder is a fact about her.
+     Safe to call during a celebration: session.i only advances in the Next!
+     handler, so the count does not jump while the card is still up.
+     The last branch says LINE, not "today": the road costs three sessions
+     back to back, so the summary card right behind this one asks her to sell
+     again today, and the stand is never closed (SPEC: going broke is never a
+     dead end). A day claim here is the one thing this sentence cannot make. */
+  function queueLine() {
+    const left = session.queue.length - session.i - 1;
+    if (left <= 0) return 'Last friend in line!';
+    return left === 1 ? '1 more friend waiting' : left + ' more friends waiting';
+  }
+
   function renderCard() {
     const c = sale.customer;
     $('standCard').innerHTML = `
@@ -170,10 +189,10 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
         <button id="standClose" class="chip">All done</button>
       </div>
       <div class="stand-queue">
-        <span class="block-cap">Friends today</span>
+        <span class="block-cap">${queueLine()}</span>
         <span class="queue-dots">${session.queue.map((q, i) =>
           `<i class="qd${i < session.i ? ' qd-done' : i === session.i ? ' qd-now' : ''}"
-            id="pip${i}"></i>`).join('')}</span>
+            id="pip${i}">${i < session.i ? TICK : ''}</i>`).join('')}</span>
       </div>
       <div class="bark" id="standBark">${pickOne(c.hello)}</div>
       <div class="buy-prompt" id="standPrompt"></div>
@@ -286,7 +305,7 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
               <div class="block-cap">You made</div>
               <div class="cups-row cups-mini">${cupImgs(o)}</div>
             </div>
-            <div class="cups-math">${o.cups} cups, $${o.per} each</div>
+            <div class="cups-math">${o.cups} cup${plural}, $${o.per} each</div>
             <div class="pad-display" id="standPad"></div>
           </div>
           <div id="standKeypadHost"></div>
@@ -584,7 +603,12 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
   }
 
   function onDrawerBill(d) {
-    if (!sale || sale.phase !== 'drawer') return;
+    /* submitted is part of the guard: two fingers landing on the drawer in
+       the same input frame queue two pointerdowns, and the first one can
+       complete the sale before the second is dispatched. Without this the
+       second tap overshoots a finished target and paints "Oops, too much!"
+       onto the celebration card, plus a miss on a sale she just won. */
+    if (!sale || sale.submitted || sale.phase !== 'drawer') return;
     if (sale.drawerHint && !sale.assist) {
       sale.drawerHint = false;
       drawer.highlight(null);
@@ -632,7 +656,13 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
     /* Fill her pip now: session.i only advances in the Next! handler, so the
        strip would otherwise sit stale through the whole celebration. */
     const pip = $('pip' + session.i);
-    if (pip) { pip.classList.remove('qd-now'); pip.classList.add('qd-done'); }
+    if (pip) {
+      pip.classList.remove('qd-now');
+      pip.classList.add('qd-done');
+      pip.textContent = TICK;
+    }
+    /* The sentence needs no update here: it counts the friends after this one,
+       and serving the one at the counter does not change that set. */
     /* Money-teaching flags (clarity review): the first successful submit
        ends the checkmark hint, the first change sale ends the what-is-
        change framing, the first column ends the glowing-box hint. */
@@ -644,6 +674,15 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
          so colTaught can be spent on a column that never drew a mark. */
       kvStore('borrowTaught', 1);
     }
+
+    /* The celebration has exactly one way forward (Next!), so "All done" has
+       to go with the question it belonged to. It used to survive into this
+       card still bright and pressable, and cancel() refuses a submitted sale,
+       so it pressed down under her finger and did nothing on EVERY sale. Same
+       reason the go key dims by class rather than the disabled attribute: a
+       control that answers with silence reads as a frozen game. */
+    const x = $('standClose');
+    if (x) x.style.visibility = 'hidden';
 
     const c = sale.customer;
     const exact = !o.problem;
