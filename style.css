@@ -541,6 +541,46 @@ body {
 /* The cashier's offer: the one figure the card is asking her to judge. */
 .r-hi b { color: var(--mango-deep); }
 
+/* THE ADDITION BRIDGE. Leaf, not mango, and that carries meaning rather than
+   taste: mango marks the thing she is being ASKED for (the receipt's ? row,
+   the judged offer), and the bridge is the opposite, a thing she is being
+   GIVEN. Painting it mango would put two marks of the same colour on one card
+   competing to be the question. Leaf is the game's help colour already: the
+   teaching hint under the receipt is leaf, and so is the go key.
+   It sits BELOW the receipt and ABOVE the nudge band, so the card reads ask,
+   facts, help, feedback, keys. */
+.bridge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin: 2px 0 6px;
+}
+
+.bridge-cap {
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--leaf);
+  line-height: 1.25;
+}
+
+/* Tabular figures so 8 + ? = 15 does not jitter its own width between one
+   fact and the next, and the same 800 weight as the receipt's amounts: this
+   is a sum she reads, not a caption. */
+.bridge-sum {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--leaf);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+}
+
+/* The blank. Deliberately the same glyph and weight as the receipt's ? so the
+   two blanks on a card read as the same kind of hole, one in the subtraction
+   and one in the addition that answers it. */
+.bridge-q { color: var(--mango-deep); font-weight: 800; }
+
 /* The bill fan hangs off the row it illustrates, so the row's own label is
    its caption and no second caption is needed.
    Written `.bills.r-bills` on purpose: the element carries both classes, and
@@ -1120,6 +1160,110 @@ body {
 
 .p-acc { font-weight: 800; min-width: 56px; text-align: right; }
 
+/* ---- the 72-fact grid ----
+   Bands are told apart by FILL PLUS BORDER, never by fill alone. A grid of 72
+   small cells is exactly where colour-only coding fails: the cells are little,
+   the panel gets read on a phone in bad light, and roughly one man in twelve
+   cannot separate the red from the green at this size. So "knows it" is the
+   only filled-solid state, "still working" carries a heavy mango rule, and
+   "not met" is empty paper. The four states read as a progression in weight
+   even in greyscale. */
+.p-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+  gap: 6px;
+  margin: 6px 0 10px;
+}
+
+.p-fact {
+  font: inherit;
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid rgba(43, 33, 24, 0.3);
+  border-radius: 10px;
+  padding: 7px 0 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+  /* A tap on any of 72 tiny cells must not be able to scroll-drag the panel
+     into a different reading position under her parent's thumb. */
+  touch-action: manipulation;
+}
+
+.p-fact span { opacity: 0.55; font-size: 14px; }
+
+.b-unseen { opacity: 0.45; }
+.b-counting { border-color: var(--mango-deep); border-width: 3px; }
+.b-consolidating { background: #FFF1D6; border-color: var(--mango-deep); }
+.b-automatic {
+  background: var(--leaf);
+  border-color: var(--leaf);
+  color: var(--paper);
+}
+.b-automatic span { opacity: 0.75; }
+
+.p-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 15px;
+  color: rgba(43, 33, 24, 0.72);
+  margin: 4px 0 2px;
+}
+
+.p-key {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.p-fact-cap {
+  font-size: 15px;
+  font-weight: 700;
+  color: rgba(43, 33, 24, 0.72);
+  margin-top: 8px;
+}
+
+.p-quiet { font-size: 17px; color: rgba(43, 33, 24, 0.72); }
+
+/* ---- backup ---- */
+.p-io-btns { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+
+.p-btn {
+  font: inherit;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--ink);
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  padding: 8px 14px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.p-btn:active { transform: translateY(2px); }
+
+.p-io {
+  width: 100%;
+  min-height: 90px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  padding: 8px;
+  resize: vertical;
+}
+
 .p-week { display: flex; gap: 8px; }
 
 .p-day {
@@ -1287,6 +1431,14 @@ body {
      they were written. This file has been burned by dead media queries once
      already; the margin below is the only queue rule that still paints. */
   .stand-queue { margin: 0; gap: 2px; }
+  /* The bridge shrinks to its sum. Landscape phone is the one viewport where
+     reaching the checkmark is the binding constraint, and the full-size bridge
+     measured 53px of overflow with the go key 19px past the fold. The teaching
+     sentence is dropped in JS (bridgeTeachable in ui.js) rather than by a
+     display:none here, so the one-time flag is never burned on a screen that
+     did not show it. */
+  .bridge { margin: 0; gap: 0; line-height: 1.1; }
+  .bridge-sum { font-size: 18px; }
   .block-cap { font-size: 14px; }
   .buy-nudge { min-height: 14px; font-size: 16px; }
   .entry-wrap { gap: 10px; margin-top: 2px; }

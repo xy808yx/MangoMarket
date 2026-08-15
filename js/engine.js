@@ -29,6 +29,9 @@ export const TUNING = {
   standDrawer: 0.15,   // big-bill stand orders, answered from the bill drawer
   standEscalate: 0.5,  // chance a stand customer pays with a frontier-sized bill
   borrowShare: { fresh: 0.45, easyMastered: 0.75 },
+  factSteer: 0.75,     // chance a small change problem aims at the neediest fact
+  teensReview: 0.45,   // chance an escalation aims BACK at a crossing-ten fact
+  bridgeRun: 3,        // consecutive first-try corrects that fade one bridge stage
   listMin: 3,
   listMax: 5,
   reviewShare: 0.25    // shopping list slots pulled from earlier aisles
@@ -47,6 +50,56 @@ export const AISLES = [
   { id: 'electronics', tiers: ['three'],                  gen: [100, 940], needs: ['two_easy', 'two_borrow'] },
   { id: 'home',        tiers: [],                         gen: [15, 350],  needs: ['three'] }
 ];
+
+/* ---------------------------------------------------------------------------
+   The 72 fluency facts.
+
+   Group A, 36 single-digit facts: a 2..9, b 2..a.
+   Group B, 36 teen facts that cross ten: a 11..18, b 2..9, kept when
+   a % 10 < b, so the ones digit cannot cover the subtrahend and ten has to
+   be broken.
+
+   Excluded by construction, everywhere: negatives, minus 0, minus 1. Every
+   answer is a single digit 0..9.
+
+   Group B is the load-bearing half. Every borrow in the higher tiers reduces
+   to a teen fact plus bookkeeping: 84 - 57 is 14 - 7 with a ten dropped,
+   43 - 7 is 13 - 7 the same way. When the teens are not automatic every later
+   tier is slow, and the slowness reads as the borrowing algorithm failing
+   when it is really fact recall failing.
+
+   The tier records answer "how is she doing at teens". These answer "how is
+   she doing at 15 - 8", which is what the bridge fades against and what the
+   shopping steer aims at. */
+export const FACTS = (() => {
+  const out = [];
+  for (let a = 2; a <= 9; a++) for (let b = 2; b <= a; b++) out.push(a + '-' + b);
+  for (let a = 11; a <= 18; a++) {
+    for (let b = 2; b <= 9; b++) if (a % 10 < b) out.push(a + '-' + b);
+  }
+  return out;
+})();
+
+export const FACT_SET = new Set(FACTS);
+
+/* The key for a problem, or null when it is not one of the 72. Null means
+   "not tracked", never an error: most of the game's problems are 2- and
+   3-digit, and the tier records already cover those. */
+export function factKey(m, s) {
+  const k = m + '-' + s;
+  return FACT_SET.has(k) ? k : null;
+}
+
+/* bridge is the addition-scaffold stage for this one fact:
+     0 cold, the bridge is on screen while she solves
+     1 warm, the bridge appears only if she misses
+     2 hot, no bridge
+   run is consecutive first-try corrects, which is what advances the stage.
+   lastOk is whether the most recent attempt was first-try correct: one
+   wrong answer is what drops a stage and what turns the parent grid red. */
+export function factRecord() {
+  return { n: 0, ok: 0, run: 0, bridge: 0, miss: 0, lastOk: false };
+}
 
 export function borrowCount(m, s) {
   let n = 0, carry = 0;
@@ -175,6 +228,71 @@ export function createEngine({ state, rng, persist }) {
     return 50 * ri(2, cap / 50);
   }
 
+  /* ---- the 72 facts: need ranking and the shopping steer ---- */
+
+  function factRec(k) {
+    if (!state.facts[k]) state.facts[k] = factRecord();
+    return state.facts[k];
+  }
+
+  /* Higher is needier. The brief's order, with its timing terms translated
+     into the evidence this game actually collects (there are no clocks here:
+     speed belongs to the drill app, and adding one to a shop would be a
+     timer on a young player buying a mango).
+       recently wrong        -> highest
+       never seen            -> next, so coverage happens at all
+       never right first try -> next
+       still on the bridge   -> mid, needier the colder the bridge
+       solid and unaided     -> lowest, and it keeps sinking with the run
+     Facts she owns still come up constantly, because they are what most
+     prices naturally produce. That is the brief's 1-target-to-3-known mix
+     arriving for free out of the economy rather than from a deal-out. */
+  function factNeed(k) {
+    const r = state.facts[k];
+    if (!r || r.n === 0) return 3500;
+    if (!r.lastOk) return 4000 + r.miss;
+    if (r.ok === 0) return 3000;
+    if (r.bridge < 2) return 2000 - r.bridge * 100;
+    return 1000 - Math.min(r.run, 10) * 50;
+  }
+
+  /* Among the tenders that produce one of the 72 facts for THIS price and
+     THIS tier, take the neediest. Constraining to the tier the natural
+     tender already landed in is what makes this safe: the mix of tiers she
+     practices, the split rule, the aisle gates and the pacing are all
+     untouched, and only WHICH fact inside the tier moves. She also cannot
+     be handed a bill she is not carrying. */
+  function steerTender(price, tier, cap) {
+    let best = -Infinity, bestList = [];
+    for (const k of FACTS) {
+      const dash = k.indexOf('-');
+      const m = +k.slice(0, dash), s = +k.slice(dash + 1);
+      if (s !== price || m > cap || classify(m, s) !== tier) continue;
+      const need = factNeed(k);
+      if (need > best) { best = need; bestList = [m]; }
+      else if (need === best) bestList.push(m);
+    }
+    return bestList.length ? pick(bestList) : null;
+  }
+
+  /* Apply the steer to an already-decided tender. Returns the tender to use.
+     Only small change problems qualify: everything above teens is out of the
+     72-fact set by definition.
+
+     cap is the largest tender allowed. In the STORE that is her wallet: she
+     cannot break a bill she is not carrying. At the STAND there is no cap,
+     because the money is the customer's, not hers. Passing the wallet at the
+     stand silently starved Group B exactly when it mattered most, since a
+     wallet under $11 rules out every crossing-ten fact and the wallet is at
+     its thinnest early on, which is when she is selling hardest. */
+  function steer(t, price, cap) {
+    const tier = classify(t, price);
+    if (tier !== 'single' && tier !== 'teens') return t;
+    if (rng() >= TUNING.factSteer) return t;
+    const st = steerTender(price, tier, cap);
+    return st === null ? t : st;
+  }
+
   function pickTwoTarget() {
     const share = state.tiers.two_easy.mastered
       ? TUNING.borrowShare.easyMastered : TUNING.borrowShare.fresh;
@@ -188,6 +306,11 @@ export function createEngine({ state, rng, persist }) {
     p.stage = state.tiers[p.tier].stage;
     p.money = p.m >= TUNING.moneyMin;
     p.entry = (SCAFFOLDED.has(p.tier) && p.stage < 2) ? 'column' : 'keypad';
+    /* The addition bridge, read but never written here: generation must stay
+       side-effect free (forceMech rerolls purchaseProblem). A fact with no
+       record yet is cold, which is the default a new fact should have. */
+    p.fact = factKey(p.m, p.s);
+    p.bridge = p.fact ? (state.facts[p.fact] ? state.facts[p.fact].bridge : 0) : null;
     if (p.mechanic === 'cashier') {
       p.offeredWrong = rng() < 0.4;
       if (p.offeredWrong) {
@@ -228,11 +351,27 @@ export function createEngine({ state, rng, persist }) {
       let t = tenderFor(item.price);
       if (mech === 'change' && tierIdx(classify(t, item.price)) < f.minTier
           && rng() < TUNING.tenderEscalate) {
-        const target = f.aisle.tiers.includes('two_borrow')
-          ? pickTwoTarget() : f.aisle.tiers[0];
+        /* Escalation normally aims FORWARD, at the frontier, so cheap items
+           still practice the newest tier. Some of them aim BACK instead, at a
+           crossing-ten fact.
+
+           This is not politeness toward old material. Group B is what every
+           later tier is made of: 84 - 57 is 14 - 7 with a ten dropped, 43 - 7
+           is 13 - 7 the same way. Left alone the economy stops producing
+           crossing facts almost completely once bakery is behind her
+           (measured over 60 sessions before this existed: 6 to 12 of the 36
+           ever met), and the facts she never meets are precisely the ones she
+           is still counting to. A cheap item paid with a teen bill is the
+           only shape in this economy that poses one. */
+        const teensBack = tierIdx('teens') < f.minTier
+          && item.price >= 2 && item.price <= 9
+          && rng() < TUNING.teensReview;
+        const target = teensBack ? 'teens'
+          : f.aisle.tiers.includes('two_borrow') ? pickTwoTarget() : f.aisle.tiers[0];
         const esc = escTender(item.price, target);
         if (esc !== null) t = esc;
       }
+      if (mech === 'change') t = steer(t, item.price, state.wallet);
       if (t > state.wallet) t = state.wallet;
       m = t;
       s = item.price;
@@ -243,10 +382,11 @@ export function createEngine({ state, rng, persist }) {
     }, f);
   }
 
-  /* Lemonade order. cups x per is her multiplication moment and is not
-     tracked; the change is the math that counts. Big bills answer from the
-     bill drawer (split rule allows bills at minuend >= 50) and never touch
-     tier history. Keypad totals stay inside tiers the frontier has opened. */
+  /* Lemonade order. cups x per only sets the total, which the card STATES:
+     the change is the one thing she is asked, so a sale is never two
+     questions deep. Big bills answer from the bill drawer (split rule allows
+     bills at minuend >= 50) and never touch tier history. Keypad totals stay
+     inside tiers the frontier has opened. */
   /* The stand gets busier as aisles open: more customers per session is the
      earn curve that keeps higher-priced aisles affordable. */
   function standVisits() {
@@ -290,7 +430,13 @@ export function createEngine({ state, rng, persist }) {
          the attempt would stop counting toward the tier. */
       if (rng() < TUNING.standEscalate) {
         const ones = total % 10;
-        if (pickTwoTarget() === 'two_borrow' && ones > 0) {
+        /* The same crossing-ten review the store's escalation runs, and this
+           is the copy that does the work: the stand is where the volume is
+           (2 to 14 sales a session against a handful of purchases), so it is
+           where Group B actually gets met. */
+        if (total >= 2 && total <= 9 && rng() < TUNING.teensReview) {
+          tender = ri(Math.max(11, total + 1), 19);
+        } else if (pickTwoTarget() === 'two_borrow' && ones > 0) {
           tender = ri(2, 4) * 10;
         } else {
           tender = ri(2, 4) * 10 + ri(ones, 9);
@@ -306,6 +452,10 @@ export function createEngine({ state, rng, persist }) {
       tender = cups * per < 5 ? 5 : 10;
     }
     const total = cups * per;
+    /* Steer the plain branches at the fact she needs most. Forced tenders (a
+       regular's trait) and exact payers are left alone: probeStandTraits
+       asserts those land exactly where the roster data says they do. */
+    if (!opts.tender && !opts.exact) tender = steer(tender, total, Infinity);
     let problem = null;
     if (total !== tender) {
       problem = finish({ mechanic: 'stand', m: tender, s: total, cups, per }, f);
@@ -396,6 +546,22 @@ export function createEngine({ state, rng, persist }) {
       d: state.day
     });
     if (t.hist.length > 60) t.hist.shift();
+    /* The per-fact record runs ALONGSIDE the tier history, never instead of
+       it. The tier owns the aisle gates and the column scaffold; the fact
+       owns the addition bridge and the shopping steer. Both fade and regress
+       SILENTLY here: a fade toast per fact would fire constantly across 72 of
+       them, and a regress must never be announced (no-fail rule). */
+    if (p.fact) {
+      const r = factRec(p.fact);
+      r.n++;
+      if (res.firstTry) {
+        r.ok++; r.run++; r.lastOk = true;
+        if (r.run >= TUNING.bridgeRun && r.bridge < 2) { r.bridge++; r.run = 0; }
+      } else {
+        r.miss++; r.run = 0; r.lastOk = false;
+        if (r.bridge > 0) r.bridge--;
+      }
+    }
     bumpDay();
     const events = [];
     if (SCAFFOLDED.has(p.tier)) {
@@ -463,8 +629,42 @@ export function createEngine({ state, rng, persist }) {
     };
   }
 
+  /* The 72-fact picture, for the parent panel.
+
+     The bands are named for what THIS game can observe. There are no clocks
+     here, so "automatic" means unaided and holding: the bridge is gone and a
+     run of first-try corrects is standing behind it. It deliberately does not
+     mean "under two seconds". Timed retrieval is the drill app's measurement,
+     and putting a stopwatch on a young player buying a mango is exactly the
+     pressure this game exists without. */
+  function factStats() {
+    const rows = FACTS.map(k => {
+      const dash = k.indexOf('-');
+      const r = state.facts[k] || null;
+      let band = 'unseen';
+      if (r && r.n > 0) {
+        if (!r.lastOk || r.ok === 0) band = 'counting';
+        else if (r.bridge >= 2 && r.run >= TUNING.bridgeRun) band = 'automatic';
+        else band = 'consolidating';
+      }
+      return {
+        key: k, m: +k.slice(0, dash), s: +k.slice(dash + 1),
+        crossing: +k.slice(0, dash) > 10, band,
+        n: r ? r.n : 0, ok: r ? r.ok : 0, miss: r ? r.miss : 0,
+        run: r ? r.run : 0, bridge: r ? r.bridge : 0
+      };
+    });
+    return {
+      rows,
+      green: rows.filter(x => x.band === 'automatic').length,
+      seen: rows.filter(x => x.band !== 'unseen').length,
+      total: FACTS.length
+    };
+  }
+
   return {
     state, frontier, unlockedAisles, canAfford, pay, earn, beginSession,
-    shoppingList, purchaseProblem, standVisits, standOrder, submitResult, stats
+    shoppingList, purchaseProblem, standVisits, standOrder, submitResult,
+    stats, factStats
   };
 }

@@ -1,9 +1,15 @@
 /* Mango Market lemonade stand (Phase 4). Owns the sell flow: a queue of
    regulars sized by engine.standVisits(), one order per customer from
-   engine.standOrder(traits), the cups-times-price moment (her strength,
-   deliberately untracked), then the change: keypad or column under $50
+   engine.standOrder(traits), then the change: keypad or column under $50
    through the tier path, the bill drawer at $50+ (state.drawer only), or an
    exact payer with no change at all. Every completed sale earns the total.
+
+   ONE QUESTION PER SALE, AND IT IS ALWAYS THE SUBTRACTION. The order card
+   used to hand into a cups-times-price step she had to solve before she ever
+   reached the change. It was untracked (multiplication is her strength) but
+   it made every sale two questions deep. The total is now STATED on the order
+   card and the Make button goes straight to the change. Do not reintroduce a
+   solve step in front of the subtraction.
 
    Pedagogy contract mirrors store.js exactly: the engine decides entry and
    money visuals; wrong answer means warm nudge, retry, then solve together;
@@ -16,7 +22,8 @@ import { columns, diagnose } from './engine.js';
 import { CUSTOMERS, BY_CUSTOMER_ID, CUP_SIZES } from './data/customers.js';
 import { store as kvStore, load as kvLoad } from './save.js';
 import {
-  makeKeypad, makeColumn, makeDrawer, DRAWER_DENOMS, receipt, toast, confetti
+  makeKeypad, makeColumn, makeDrawer, DRAWER_DENOMS, receipt, bridge, bridgeTeachable,
+  toast, confetti
 } from './ui.js';
 import { play } from './sfx.js';
 
@@ -169,7 +176,7 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
          hello keeps the bubble talking. */
       paying: pickOne(customer.paying || customer.hello),
       happy: pickOne(customer.happy),
-      misses: { total: 0, change: 0 }, anyMiss: false,
+      misses: { change: 0 }, anyMiss: false,
       submitted: false, assist: null, colW: null, entry: [], count: 0
     };
     /* Name the walker while the card is down: the 2-3s walk-in used to be
@@ -214,7 +221,6 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
     const order = `<b>${o.cups} ${CUP_SIZES[o.per]} cup${o.cups > 1 ? 's' : ''},
       please!</b>`;
     if (sale.phase === 'order') return `${sale.hello}<br>${order}`;
-    if (sale.phase === 'total') return order;
     /* The paying line carries the big-bill apology for the forced-tender
        regulars, which is why it lands here and not in the hello: the tender
        only becomes her problem once it is on the counter. */
@@ -258,11 +264,40 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
     renderPhase();
   }
 
+  /* The addition bridge slot. Cold (stage 0) shows it with the card; warm
+     (stage 1) waits for a miss and is why this is painted into its own node
+     rather than baked into the receipt: filling it on a miss must not rebuild
+     the receipt, which would wipe whatever she has typed. Hot (stage 2) never
+     shows it, and neither does a column card (the column is its own method
+     and two scaffolds at once is one too many). */
+  function paintBridge(afterMiss) {
+    const p = sale.order.problem;
+    const host = $('standBridge');
+    if (!host) return;
+    if (!p || p.bridge === null || p.bridge >= 2 || sale.colW) {
+      host.innerHTML = '';
+      return;
+    }
+    /* Never on the same card as the change lesson itself. That card is already
+       introducing what change IS, which is a bigger idea than any one fact,
+       and a second new notation underneath it is one thing too many at once.
+       It measured as a layout problem too: both lines are one-time, so they
+       land together on exactly one card, and that card went 22px past the fold
+       on a 393x852 phone. The bridge starts from her second change sale. */
+    if (!kvLoad('taughtChangeStand', 0)) { host.innerHTML = ''; return; }
+    if (p.bridge > 0 && !afterMiss) { host.innerHTML = ''; return; }
+    const teach = bridgeTeachable() && !kvLoad('bridgeTaught', 0);
+    host.innerHTML = bridge(p.m, p.s, teach);
+    if (teach) kvStore('bridgeTaught', 1);
+  }
+
   function noteMiss(which) {
     sale.misses[which]++;
     sale.anyMiss = true;
     const x = $('standClose');
     if (x) x.style.visibility = 'hidden';
+    /* A miss is exactly when the warm bridge earns its place. */
+    if (which === 'change') paintBridge(true);
   }
 
   function cancel() {
@@ -314,8 +349,6 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
   function renderPhase() {
     const o = sale.order;
     const c = sale.customer;
-    const size = CUP_SIZES[o.per];
-    const plural = o.cups > 1 ? 's' : '';
     /* renderPhase is called directly on a phase change as well as from
        renderCard, so the bubble has to be refreshed here or the customer
        keeps saying the previous phase's line. */
@@ -345,40 +378,17 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
           <div class="cup-block">
             <div class="block-cap">${c.name} wants</div>
             <div class="cups-row">${cupImgs(o)}</div>
+            <div class="cups-math">${o.cups === 1
+              ? `1 cup, costs <b>$${o.total}</b>`
+              : `${o.cups} cups, $${o.per} each, costs <b>$${o.total}</b>`}</div>
           </div>
           <button id="standMake" class="big-btn ok">Make lemonade!</button>
         </div>`;
       $('standMake').addEventListener('click', () => {
         /* No chime: this tap cannot be wrong, and the correct-answer sound
            must keep meaning "you got it right". */
-        sale.phase = 'total';
-        renderPhase();
+        startSolve();
       });
-    } else if (sale.phase === 'total') {
-      /* One line, and it IS the question. This used to open with "Lemonade is
-         ready!", restate the per-cup price, and only then ask, which put three
-         sentences between her and the ask; the maths strip under the cups
-         already says "3 cups, $2 each", so the price never needed saying in
-         prose at all. Vocabulary is fixed game-wide: COSTS is the price, PAYS
-         WITH is the bill, GIVES BACK is the change. */
-      $('standPrompt').innerHTML = o.cups === 1
-        ? `<b>Type the price of one ${size} cup!</b>`
-        : `<b>How much do ${o.cups} ${size} cups cost?</b>`;
-      $('standBody').innerHTML = `
-        <div class="entry-wrap">
-          <div id="standEntryArea">
-            <div class="cup-block">
-              <div class="block-cap">You made</div>
-              <div class="cups-row cups-mini">${cupImgs(o)}</div>
-            </div>
-            <div class="cups-math">${o.cups} cup${plural}, $${o.per} each</div>
-            <div class="pad-display" id="standPad"></div>
-          </div>
-          <div id="standKeypadHost"></div>
-        </div>
-        ${HINTS}`;
-      mountKeypad();
-      paintPad();
     } else if (sale.phase === 'change') {
       const p = o.problem;
       /* THE RECEIPT replaces the paragraph. Direction words are still
@@ -408,7 +418,8 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
          same-picture-twice defect the caption rule exists to stop. The
          teaching line still shows on both paths. */
       $('standBills').innerHTML =
-        (p.entry === 'column' ? '' : changeReceipt(c, p)) + teach;
+        (p.entry === 'column' ? '' : changeReceipt(c, p))
+        + '<div id="standBridge"></div>' + teach;
       if (p.entry !== 'column') setSplit(true);
       $('standBody').innerHTML = `
         <div class="entry-wrap">
@@ -430,6 +441,7 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
         paintPad();
         keypad.setGo(false);
       }
+      paintBridge(false);
     } else if (sale.phase === 'drawer') {
       const p = o.problem;
       /* One line, and it names the actor and the GESTURE: "count up" alone
@@ -545,21 +557,6 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
   function onSubmit() {
     if (sale.assist) return;
     const o = sale.order;
-    if (sale.phase === 'total') {
-      if (!sale.entry.length) return;
-      const v = Number(sale.entry.join(''));
-      if (v === o.total) { totalDone(); return; }
-      noteMiss('total');
-      if (sale.misses.total >= 2) {
-        startAssist();
-      } else {
-        nudge(NUDGES[Math.floor(Math.random() * NUDGES.length)]);
-        sale.entry = [];
-        paintPad();
-        keypad.setGo(false);
-      }
-      return;
-    }
     /* change */
     const p = o.problem;
     let ok, diag = null;
@@ -588,7 +585,14 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
     }
   }
 
-  function totalDone() {
+  /* The order card hands straight to the subtraction. There used to be a
+     cups-times-price step here: she typed the total before ever meeting the
+     change. It was untracked on purpose (multiplication is her strength) but
+     it made every sale two questions deep, and a stand sale is supposed to
+     pose ONE. The total is stated on the order card as a fact now, so the
+     only thing she is ever asked at this stand is the subtraction. Do not
+     put a solve step back in front of it. */
+  function startSolve() {
     const o = sale.order;
     kvStore('goTaught', 1);
     if (!o.problem) {
@@ -596,7 +600,8 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
       completeSale(null);
       return;
     }
-    play('chime');
+    /* No chime here: the tap that reaches this point cannot be wrong, and the
+       correct-answer sound has to keep meaning "you got it right". */
     sale.entry = [];
     sale.phase = o.problem.entry === 'drawer' ? 'drawer' : 'change';
     $('standNudge').textContent = '';
@@ -627,7 +632,7 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
       setHint('standKeyHint', '');
       sale.assist = { i: 0, expect, col: true, n: columns(p.m, p.s).length };
     } else {
-      const answer = sale.phase === 'total' ? o.total : o.problem.answer;
+      const answer = o.problem.answer;
       sale.assist = { digits: digitsOf(answer).reverse(), at: 0, col: false, answer };
       $('standEntryArea').innerHTML = `<div class="pad-display" id="standPad"></div>`;
       setHint('standColHint', 'Tap these numbers on the keypad!');
@@ -660,12 +665,7 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
       a.at++;
       paintAssist();
       if (a.at >= a.digits.length) {
-        if (sale.phase === 'total') {
-          sale.assist = null;
-          totalDone();
-        } else {
-          completeSale({ firstTry: false, assisted: true });
-        }
+        completeSale({ firstTry: false, assisted: true });
       }
     }
   }

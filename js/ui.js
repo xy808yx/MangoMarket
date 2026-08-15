@@ -229,6 +229,50 @@ export function receipt(rows) {
   }).join('') + '</div>';
 }
 
+/* THE ADDITION BRIDGE.
+
+   Her addition is fluent and her subtraction is not, so 15 - 8 is routed
+   through a fact she already owns: 8 plus what makes 15. She is not being
+   taught a new method, she is being pointed at one she has.
+
+   What it deliberately is NOT: a count-back, a number line, a row of dots, a
+   ten-frame, a partition diagram. Every one of those is a thing she can count
+   on, and counting is the exact habit this game exists to route around. The
+   bridge is numerals only, one line, and it never moves.
+
+   It fades PER FACT, which is why its stage lives on the fact record and not
+   on the tier: she can own 15 - 8 cold while 13 - 6 still wants the prompt.
+     0 cold, on screen while she solves
+     1 warm, appears only after a miss
+     2 hot, gone
+   The subtraction is always the question. The bridge is only ever underneath
+   it, or she ends up fluent at addition problems and no further forward.
+
+   teach is the one-time sentence, gated by the bridgeTaught flag like every
+   other teaching moment in this game: notation she has never been shown is
+   not self-explanatory, and saying it every time turns help into noise. */
+/* The landscape-phone tier drops the bridge's teaching sentence. That is a
+   measurement, not taste: at 393px of total height the sentence cost 53px of
+   overflow and put the checkmark 19px past the fold, and a card she cannot
+   submit is worse than a card that explains less.
+
+   The flag is NOT burned when the sentence is dropped, so her one showing
+   survives to the next portrait or iPad card. Same discipline as standIntro,
+   whose flag is set on the button rather than on render for the same reason:
+   a single teaching moment must not be spent on a screen that never showed
+   it. */
+export function bridgeTeachable() {
+  return !window.matchMedia('(max-height: 460px)').matches;
+}
+
+export function bridge(m, s, teach) {
+  return '<div class="bridge">'
+    + (teach ? `<span class="bridge-cap">${s} and how many more make ${m}?
+        You know this one!</span>` : '')
+    + `<span class="bridge-sum">${s} + <b class="bridge-q">?</b> = ${m}</span>`
+    + '</div>';
+}
+
 /* Greedy whole-dollar bill decomposition. NO COINS exist in this game.
    Module-private: the receipt above is the only fan left, so exporting this
    would advertise a loose bill row with no caption, which is exactly the

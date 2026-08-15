@@ -22,7 +22,9 @@ import { BOARDS } from './boards.js';
 import {
   openZones, nextZone, ZONE_INFO, STAND_SESSIONS_TO_OPEN
 } from './zones.js';
-import { makeKeypad, makeColumn, receipt, toast, confetti } from './ui.js';
+import {
+  makeKeypad, makeColumn, receipt, bridge, bridgeTeachable, toast, confetti
+} from './ui.js';
 import { initSfx, play } from './sfx.js';
 
 /* Shelf headers are the only text naming a shelf, she reads them on every
@@ -871,6 +873,7 @@ export function initGame() {
        cashier's judge card has no column, so its receipt always renders. */
     const showReceipt = cur.phase === 'judge' || p.entry !== 'column';
     $('buyBills').innerHTML = (showReceipt ? receiptFor(p, bills) : '')
+      + '<div id="buyBridge"></div>'
       + notes.map(n => `<div class="assist-hint">${n}</div>`).join('');
     /* The wallet mechanic's on-card "Wallet $ ?" chip is GONE. It existed
        because the real HUD chip hides behind the modal scrim, but the
@@ -880,6 +883,7 @@ export function initGame() {
        of it. The success card says where the wallet landed instead. */
     if (cur.phase === 'judge') renderJudge();
     else renderEntry();
+    paintBridge(false);
   }
 
   /* A miss means the sale must now finish here: hide the x so the attempt
@@ -893,6 +897,38 @@ export function initGame() {
     cur.anyMiss = true;
     const bc = $('buyClose');
     if (bc) bc.style.visibility = 'hidden';
+    /* The warm bridge earns its place on a miss. Never on a deal miss: the
+       deal step is its own untracked subtraction (base minus the discount)
+       and has nothing to do with the purchase's fact. */
+    if (kind !== 'deal') paintBridge(true);
+  }
+
+  /* The addition bridge slot, mirroring stand.js exactly. Its own node so a
+     miss can fill it without rebuilding the receipt and wiping her entry.
+     Cold shows with the card, warm waits for a miss, hot never shows, and a
+     column card never shows it (one method at a time). The judge card is out
+     too: she is being asked to check someone else's answer there, not to
+     produce one, so a bridge would be answering the question for her. */
+  function paintBridge(afterMiss) {
+    const p = cur && cur.problem;
+    const host = $('buyBridge');
+    if (!host) return;
+    if (!p || p.bridge === null || p.bridge >= 2
+        || p.entry === 'column' || cur.phase === 'judge' || cur.phase === 'deal') {
+      host.innerHTML = '';
+      return;
+    }
+    /* One new idea per card: same rule as the stand. The store's first change
+       sale is teaching the opposite direction (money coming TO her) and owns
+       that card by itself. */
+    if (p.mechanic === 'change' && !kvLoad('taughtChangeStore', 0)) {
+      host.innerHTML = '';
+      return;
+    }
+    if (p.bridge > 0 && !afterMiss) { host.innerHTML = ''; return; }
+    const teach = bridgeTeachable() && !kvLoad('bridgeTaught', 0);
+    host.innerHTML = bridge(p.m, p.s, teach);
+    if (teach) kvStore('bridgeTaught', 1);
   }
 
   function cancelBuy() {
@@ -1130,7 +1166,7 @@ export function initGame() {
   function dealDone() {
     play('chime');
     /* The deal digits must not leak into the purchase entry (the stand's
-       totalDone clears the same way). */
+       startSolve clears the same way). */
     cur.entry = [];
     cur.phase = cur.problem.mechanic === 'cashier' ? 'judge' : 'entry';
     renderBuy();

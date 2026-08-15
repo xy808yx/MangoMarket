@@ -29,7 +29,7 @@
      than throwing, but a missing line is a data mistake, not a style.
    - One or two short sentences per line, plain words, no adult deadpan.
      Miso's old "Perfect. As expected." was the cat sounding unimpressed at
-     a five year old who had just got it right. */
+     a young player who had just got it right. */
 
 export const CUSTOMERS = [
   { id: 'waddles', name: 'Waddles', species: 'duck',

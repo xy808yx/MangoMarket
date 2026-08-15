@@ -6,7 +6,8 @@
    node tools/sim.mjs [--seed N] [--sessions N] [--seeds N] [--verbose] */
 
 import {
-  createEngine, TIERS, AISLES, TUNING, classify, borrowCount, seededRng
+  createEngine, TIERS, AISLES, TUNING, classify, borrowCount, seededRng,
+  FACTS, factKey
 } from '../js/engine.js';
 import { defaultSave, setBackend, saveSave, loadSave } from '../js/save.js';
 import { CUSTOMERS } from '../js/data/customers.js';
@@ -106,6 +107,16 @@ function run(opts) {
       err(sess, `tier ${p.tier} above frontier`);
     }
     if (p.m > 999) err(sess, `minuend ${p.m} above the $999 contract`);
+    /* The fluency-fact tag must agree with the fact set, and the bridge only
+       exists on tagged problems. A stale tag would aim the shopping steer and
+       the parent grid at the wrong fact. */
+    if (p.fact !== factKey(p.m, p.s)) err(sess, `fact tag ${p.fact} on ${p.m}-${p.s}`);
+    if (p.fact && !(p.bridge >= 0 && p.bridge <= 2)) {
+      err(sess, `bridge ${p.bridge} on ${p.fact}`);
+    }
+    if (!p.fact && p.bridge !== null) {
+      err(sess, `bridge ${p.bridge} on untracked ${p.m}-${p.s}`);
+    }
     if (p.mechanic === 'cashier') {
       if (!p.elig.cashier) err(sess, 'cashier without eligibility');
       if (!p.review) err(sess, 'cashier not marked review');
@@ -235,6 +246,7 @@ function run(opts) {
 
   audit.hash = hash(log.join('\n'));
   audit.finalStats = engine.stats();
+  audit.finalFacts = engine.factStats();
   audit.state = engine.state;
   return audit;
 }
@@ -298,6 +310,31 @@ function checks(profile, a, sessions) {
   const sums = Object.values(a.finalStats.perDay).reduce((x, y) => x + y, 0);
   add('parent panel day counts match submits',
     sums === a.totalSubmits ? null : `${sums} vs ${a.totalSubmits}`);
+
+  /* The 72-fact layer. Coverage is the one that matters: the whole reason
+     the steer exists is that an economy left to itself spends its attempts
+     on whatever prices happen to come up, and the facts she never meets are
+     exactly the ones she is still counting. */
+  const fx = a.finalFacts;
+  const badRec = fx.rows.filter(r =>
+    r.bridge < 0 || r.bridge > 2 || r.ok > r.n || r.miss > r.n || r.ok + r.miss !== r.n);
+  add('fact records stay consistent',
+    badRec.length ? `${badRec.length} bad, first ${badRec[0].key}` : null);
+  /* Thresholds are set from what the economy actually delivers, not from a
+     wish. Measured over 8 seeds x 2 profiles x 60 sessions after the steer
+     and the crossing-ten review landed: 53 to 62 of 72, and 24 to 32 of the
+     36 crossing facts. Before them it was 34 to 40 and 6 to 12.
+
+     Full coverage of all 72 is NOT this game's job and should not be tuned
+     for: a shop can only pose the facts its prices produce (the subtrahend is
+     the price), and forcing the rest would mean inventing purchases nobody
+     would make. Systematic coverage belongs to the drill app. These guards
+     exist to catch a regression in the steer, not to chase 72. */
+  add('fluency facts get covered (>=50 of 72 met)',
+    fx.seen >= 50 ? null : `only ${fx.seen} of 72 met`);
+  const crossSeen = fx.rows.filter(r => r.crossing && r.band !== 'unseen').length;
+  add('crossing-ten facts get covered (>=22 of 36 met)',
+    crossSeen >= 22 ? null : `only ${crossSeen} of 36 met`);
   const drawerHist = Object.values(a.state.tiers).reduce((x, t) => x + t.seq, 0);
   add('drawer stays out of tier history',
     drawerHist === a.totalSubmits - a.drawerSubmits

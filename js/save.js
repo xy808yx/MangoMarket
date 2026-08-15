@@ -84,7 +84,13 @@ export function defaultSave() {
        furniture [{id, x, z, ry}]. deco: {wallpaper: itemId|null}. */
     found: {},
     room: [],
-    deco: { wallpaper: null }
+    deco: { wallpaper: null },
+    /* The 72 fluency facts, keyed "15-8". One record per fact she has
+       actually met, created lazily, so a fresh save carries an empty object
+       rather than 72 empty rows. Shape is engine.js factRecord():
+       {n, ok, run, bridge, miss, lastOk}. The tier records above gate the
+       aisles; these carry the addition bridge and the shopping steer. */
+    facts: {}
   };
 }
 
@@ -116,6 +122,11 @@ function migrate(s) {
   for (const t of Object.keys(def.tiers)) {
     if (!(t in s.tiers)) s.tiers[t] = def.tiers[t];
   }
+  /* An imported or hand-edited save can carry anything here. The engine
+     indexes facts by key and would happily write onto an array or a string,
+     so a bad shape is replaced rather than trusted. Losing fact history costs
+     the bridge stages, never the wallet or the aisles. */
+  if (!s.facts || typeof s.facts !== 'object' || Array.isArray(s.facts)) s.facts = {};
   s.v = SAVE_VERSION;
   return s;
 }
