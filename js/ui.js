@@ -186,24 +186,59 @@ function colsOfBottom(cols) {
   return Math.max(1, n);
 }
 
-/* Greedy whole-dollar bill decomposition. NO COINS exist in this game. */
-export function billsFor(total) {
+/* THE RECEIPT. The money story used to be a paragraph: five lines of centred
+   prose with the actual question as its last clause, which a young player has
+   to read all of before she learns what she is being asked. The same facts as
+   labelled rows carry about a fifth of the reading, and position does the work
+   the words were doing: the amount paid on top, the price under it, the answer
+   row she is filling at the bottom, which is the column scaffold's own layout
+   in words.
+
+   NUMERALS ONLY, so the split rule holds at every tier and one component
+   serves a $5 sale and a $500 one. Rows are {label, value}; value '?' marks
+   the row she is solving for, and hi marks a value the card is asking her to
+   judge (the cashier's offer). A receipt is never shown beside a column: the
+   column already presents both operands in the canonical layout, and the same
+   numbers twice on one card is the defect the caption rule exists to stop. */
+/* A row may carry the inert bill fan as its own illustration (bills: total).
+   That is deliberate rather than leaving the fan where it was: it used to sit
+   above the prompt under the caption "You pay with these bills:", and the
+   receipt's first row is now labelled "You pay with", so the card said one
+   thing twice. Hung off the row, the fan is captioned by the row it explains
+   and the money visual the >= 50 tier is supposed to get survives. Still
+   flat and fanned, because only drawer bills are tappable. */
+export function receipt(rows) {
+  return '<div class="receipt">' + rows.map(r => {
+    const ask = r.value === '?';
+    const cls = 'r-line' + (ask ? ' r-ask' : '') + (r.hi ? ' r-hi' : '');
+    const val = ask ? '<b class="r-q">?</b>' : '<b>$' + r.value + '</b>';
+    /* The fan is BOUNDED. A tender is whatever the wallet can break, so a
+       late-game $800 comes out as eight $100 bills and $999 as seventeen
+       bills: measured, eight of them wrapped to a second row and pushed the
+       checkmark 12px past the fold on a 393x852 phone. Past eight the fan has
+       also stopped teaching anything, since a row of identical hundreds says
+       nothing the row label does not. Numerals alone are legal at every tier,
+       so the receipt simply drops the picture and keeps the number. */
+    const fan = r.bills ? billsFor(r.bills) : [];
+    const art = fan.length && fan.length <= 8
+      ? `<div class="bills r-bills${fan.length > 4 ? ' bills-many' : ''}">`
+          + fan.map(d => `<span class="bill bill-${d}">$${d}</span>`).join('')
+          + '</div>'
+      : '';
+    return `<div class="${cls}"><span>${r.label}</span>${val}</div>${art}`;
+  }).join('') + '</div>';
+}
+
+/* Greedy whole-dollar bill decomposition. NO COINS exist in this game.
+   Module-private: the receipt above is the only fan left, so exporting this
+   would advertise a loose bill row with no caption, which is exactly the
+   thing the receipt's own row labels replaced. */
+function billsFor(total) {
   const out = [];
   for (const d of [100, 50, 20, 10, 5, 1]) {
     while (total >= d) { out.push(d); total -= d; }
   }
   return out;
-}
-
-export function renderBills(el, total) {
-  el.innerHTML = '';
-  el.className = 'bills';
-  for (const d of billsFor(total)) {
-    const b = document.createElement('span');
-    b.className = 'bill bill-' + d;
-    b.textContent = '$' + d;
-    el.appendChild(b);
-  }
 }
 
 /* Bill drawer for big stand tenders (Phase 4). Change is made the real

@@ -16,7 +16,7 @@ import { columns, diagnose } from './engine.js';
 import { CUSTOMERS, BY_CUSTOMER_ID, CUP_SIZES } from './data/customers.js';
 import { store as kvStore, load as kvLoad } from './save.js';
 import {
-  makeKeypad, makeColumn, makeDrawer, DRAWER_DENOMS, renderBills, toast, confetti
+  makeKeypad, makeColumn, makeDrawer, DRAWER_DENOMS, receipt, toast, confetti
 } from './ui.js';
 import { play } from './sfx.js';
 
@@ -56,6 +56,15 @@ const HINTS = '<div class="assist-hint" id="standColHint"></div>'
 const $ = id => document.getElementById(id);
 const setHint = (id, text) => { const el = $(id); if (el) el.textContent = text; };
 const pickOne = arr => arr[Math.floor(Math.random() * arr.length)];
+/* The two-column short-screen layout (the max-height 460px tier). ONE toggle,
+   because the class lives on #standCard and outlives every innerHTML written
+   into it: any surface that replaces the card wholesale owes a setSplit(false)
+   or it inherits the previous phase's grid. The summary card learned that the
+   hard way, arriving as a two-column grid with an empty second column. */
+const setSplit = on => {
+  const el = $('standCard');
+  if (el) el.classList.toggle('split', on);
+};
 
 export function createStand({ engine, state, world, hud, onEvents, onExit, onSession }) {
   let gen = 0;
@@ -147,8 +156,19 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
     if (s.i >= s.queue.length) { showSummary(); return; }
     const customer = s.queue[s.i];
     const order = engine.standOrder(customer.trait || {});
+    /* The three lines are picked ONCE per sale, not per render. renderCard
+       runs again on every phase change and after every miss, so picking
+       inside the template re-rolled the customer's voice mid-sentence. */
     sale = {
       customer, order, phase: 'order',
+      hello: pickOne(customer.hello),
+      /* paying is optional in the roster (an exact payer has no paying phase
+         to say it in), and a missing one must not throw: this runs on the tap
+         path, outside the frame loop's try/catch, so a TypeError here leaves
+         her stuck behind a modal with no card in it. Falling back to the
+         hello keeps the bubble talking. */
+      paying: pickOne(customer.paying || customer.hello),
+      happy: pickOne(customer.happy),
       misses: { total: 0, change: 0 }, anyMiss: false,
       submitted: false, assist: null, colW: null, entry: [], count: 0
     };
@@ -180,6 +200,39 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
     return left === 1 ? '1 more friend waiting' : left + ' more friends waiting';
   }
 
+  /* ONE speech bubble, and it says what the customer is saying RIGHT NOW.
+     The bubble used to hold the hello for the whole sale, so the celebration
+     card showed the opening line and the closing line at once, in two
+     identical bubbles, with the top one still asking for lemonade that had
+     already been poured. It also meant the order ("3 Small cups, please!")
+     was rendered as a game prompt in red, which put the customer's own words
+     in the game's voice and gave the card two speakers dressed the same.
+     Now the order rides inside the bubble where it belongs, and every later
+     phase replaces the line rather than stacking a second one. */
+  function barkFor() {
+    const o = sale.order;
+    const order = `<b>${o.cups} ${CUP_SIZES[o.per]} cup${o.cups > 1 ? 's' : ''},
+      please!</b>`;
+    if (sale.phase === 'order') return `${sale.hello}<br>${order}`;
+    if (sale.phase === 'total') return order;
+    /* The paying line carries the big-bill apology for the forced-tender
+       regulars, which is why it lands here and not in the hello: the tender
+       only becomes her problem once it is on the counter. */
+    return sale.paying;
+  }
+
+  /* The change receipt, shared by the keypad phase and the drawer: the two
+     phases pose the SAME sum by different means, so they must not drift into
+     two wordings of it. Order is minuend, subtrahend, then the row she is
+     solving for, which is the column scaffold's layout in words. */
+  function changeReceipt(c, p) {
+    return receipt([
+      { label: `${c.name} paid`, value: p.m },
+      { label: 'The lemonade costs', value: p.s },
+      { label: 'You give back', value: '?' }
+    ]);
+  }
+
   function renderCard() {
     const c = sale.customer;
     $('standCard').innerHTML = `
@@ -194,7 +247,7 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
           `<i class="qd${i < session.i ? ' qd-done' : i === session.i ? ' qd-now' : ''}"
             id="pip${i}">${i < session.i ? TICK : ''}</i>`).join('')}</span>
       </div>
-      <div class="bark" id="standBark">${pickOne(c.hello)}</div>
+      <div class="bark" id="standBark">${barkFor()}</div>
       <div class="buy-prompt" id="standPrompt"></div>
       <div id="standBills"></div>
       <div class="buy-nudge" id="standNudge"></div>
@@ -263,8 +316,21 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
     const c = sale.customer;
     const size = CUP_SIZES[o.per];
     const plural = o.cups > 1 ? 's' : '';
+    /* renderPhase is called directly on a phase change as well as from
+       renderCard, so the bubble has to be refreshed here or the customer
+       keeps saying the previous phase's line. */
+    const bark = $('standBark');
+    if (bark) bark.innerHTML = barkFor();
+    /* 'split' opts this card into the two-column short-screen layout (see the
+       max-height 460px tier): the receipt sits BESIDE the keypad instead of
+       above it. Only the phases that actually render a receipt want it; on the
+       order card it would leave an empty left column, so it is cleared here
+       and set again below by the phases that earn it. */
+    setSplit(false);
     if (sale.phase === 'order') {
-      $('standPrompt').innerHTML = `<b>${o.cups} ${size} cup${plural}, please!</b>`;
+      /* The order is in the bubble now; this row would only repeat it. The
+         button underneath already says what to do. */
+      $('standPrompt').innerHTML = '';
       /* Both cup groups are captioned. Unlabelled, the price list and the
          order were the same picture twice on one card, and a menu that
          highlights Medium sat directly above one Medium cup with nothing
@@ -289,15 +355,15 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
         renderPhase();
       });
     } else if (sale.phase === 'total') {
-      /* One cup must not read as a trick question: ask for the payment,
-         not an echo of the price just stated (clarity review). */
-      /* Vocabulary is fixed game-wide: COSTS is the price, PAYS WITH is the
-         bill, GIVES BACK is the change. The old one-cup line asked "how much
-         does NAME pay?" for the PRICE, and one tap later the change card said
-         "NAME pays with $5", teaching then contradicting the same word. */
-      $('standPrompt').innerHTML = `Lemonade is ready! ` + (o.cups === 1
-        ? `One ${size} cup costs $${o.per}. <b>Type the price!</b>`
-        : `Each ${size} cup costs $${o.per}. <b>How much do ${o.cups} cups cost?</b>`);
+      /* One line, and it IS the question. This used to open with "Lemonade is
+         ready!", restate the per-cup price, and only then ask, which put three
+         sentences between her and the ask; the maths strip under the cups
+         already says "3 cups, $2 each", so the price never needed saying in
+         prose at all. Vocabulary is fixed game-wide: COSTS is the price, PAYS
+         WITH is the bill, GIVES BACK is the change. */
+      $('standPrompt').innerHTML = o.cups === 1
+        ? `<b>Type the price of one ${size} cup!</b>`
+        : `<b>How much do ${o.cups} ${size} cups cost?</b>`;
       $('standBody').innerHTML = `
         <div class="entry-wrap">
           <div id="standEntryArea">
@@ -315,21 +381,35 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
       paintPad();
     } else if (sale.phase === 'change') {
       const p = o.problem;
-      /* Direction words (clarity review): the store's change comes TO her,
-         the stand's change goes FROM her, and the sentence must say so.
-         The first change sale ever also names what "change" means; the
-         taught flag is shared with the store side. */
-      /* Say WHY money comes back. "You give money back" is arbitrary unless
-         something states she handed over MORE than the price, and the engine
-         guarantees tender > total on every change problem, so the comparison
-         can never render a falsehood. The flag is stand-only: the store owns
-         the opposite direction and needs its own first time. */
+      /* THE RECEIPT replaces the paragraph. Direction words are still
+         load-bearing (the store's change comes TO her, the stand's goes FROM
+         her) but they now live in the row labels, where each one sits beside
+         the number it names instead of three clauses deep in a sentence.
+         Order is minuend then subtrahend then the answer row, which is the
+         column scaffold's layout in words, so the two entry paths teach the
+         same shape. */
+      /* The WHY still has to be said once, because the bill-and-change model
+         is a cultural convention rather than something discoverable, and the
+         split rule deliberately hides the money visual that could show it at
+         this tier. One sentence in the hint voice, under the receipt, instead
+         of three clauses inside the question. The flag is stand-only: the
+         store owns the opposite direction and needs its own first time. */
       const teach = !kvLoad('taughtChangeStand', 0)
-        ? ` $${p.m} is more than $${o.total}! You give the extra money back. That is called change.`
+        ? `<div class="assist-hint">${c.name} paid more than the lemonade costs.
+             The extra goes back. That is called change.</div>`
         : '';
-      $('standPrompt').innerHTML =
-        `That is $${o.total}! ${c.name} pays with $${p.m}.${teach}
-         <b>How much do you give back?</b>`;
+      $('standPrompt').innerHTML = '<b>How much do you give back?</b>';
+      /* The receipt goes in the BILLS slot, not the body, so the card reads
+         ask, then facts, then the empty nudge band, then the entry. The nudge
+         has to sit next to the keypad: it is feedback on the tap she just
+         made, and it was landing above the facts instead. */
+      /* No receipt beside a column: the column already shows both amounts in
+         exactly this order, and printing them twice on one card is the
+         same-picture-twice defect the caption rule exists to stop. The
+         teaching line still shows on both paths. */
+      $('standBills').innerHTML =
+        (p.entry === 'column' ? '' : changeReceipt(c, p)) + teach;
+      if (p.entry !== 'column') setSplit(true);
       $('standBody').innerHTML = `
         <div class="entry-wrap">
           <div id="standEntryArea"></div>
@@ -342,31 +422,25 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
         keypad.setGo(false);
       } else {
         sale.colW = null;
-        /* Show the subtraction. The EASIER total phase gets cup pictures and
-           a maths strip; the harder change step used to strip all of it and
-           ask her to hold two amounts out of a three-clause sentence while
-           working the keypad. A keypad change problem is always under $50, so
-           there are no bills either: the empty pad was the whole card. */
+        /* The old "$5 − $2" strip is gone: the receipt above carries both
+           amounts, and the strip was the biggest type on the card while
+           being a restatement of it. */
         $('standEntryArea').innerHTML =
-          `<div class="cups-math">$${p.m} − $${p.s}</div>
-           <div class="pad-display" id="standPad"></div>`;
+          `<div class="pad-display" id="standPad"></div>`;
         paintPad();
         keypad.setGo(false);
       }
     } else if (sale.phase === 'drawer') {
       const p = o.problem;
-      /* Name the amounts, the actor and the GESTURE: "count up" alone can
-         read as counting one to fifty (clarity review). */
-      /* Name the direction. Without it the only direction word on this
-         screen is "NAME gave you this!", which points money toward her, so
-         the story she could assemble was the change rule inverted. */
+      /* One line, and it names the actor and the GESTURE: "count up" alone
+         can read as counting one to fifty. The two amounts moved into the
+         receipt, and the inert bill fan moved out: the fan and the row
+         "NAME paid $50" were the same fact twice, and the drawer's own bills
+         are the money she actually handles. */
       $('standPrompt').innerHTML =
-        `That is $${o.total}! ${c.name} gave you $${p.m}, so you give bills back.
-         <b>Hand ${c.name} bills until the big number gets to $${p.m}!</b>`;
-      $('standBills').innerHTML =
-        `<div class="bills-cap">${c.name} gave you this!</div>
-         <div id="standBillsRow"></div>`;
-      renderBills($('standBillsRow'), p.m);
+        `<b>Hand ${c.name} bills until the big number gets to $${p.m}!</b>`;
+      $('standBills').innerHTML = changeReceipt(c, p);
+      setSplit(true);
       $('standBody').innerHTML = `<div id="standDrawerHost"></div>`;
       sale.count = o.total;
       drawer = makeDrawer($('standDrawerHost'), {
@@ -692,17 +766,34 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
     const change = o.problem ? o.problem.answer : null;
     $('standNudge').textContent = '';
     $('standBills').innerHTML = '';
+    /* The celebration is one centred column again. */
+    setSplit(false);
+    /* ONE event, told once. This card used to carry five statements about the
+       same $6: a prompt ("Miso is happy!"), the headline, the wallet line, the
+       exact-payer line and the goodbye, plus a SECOND speech bubble under a
+       first one that was still showing the hello. The headline and the wallet
+       line are now one sentence, the maths echo is kept because it confirms
+       the answer she just typed in words, and the goodbye goes in the bubble
+       that is already on the card. */
+    const echo = exact
+      ? `${c.name} paid exactly $${o.total}.`
+      : sale.phase === 'drawer'
+        ? `$${o.total} and $${change} makes $${o.problem.m}.`
+        : change > 0 ? `You gave ${c.name} $${change} back.` : '';
     $('standBody').innerHTML = `
       <div class="success">
         <div class="success-big">You earned $${o.total}!</div>
-        <div class="success-sub">$${o.total} went into your wallet!</div>
-        ${exact ? `<div class="success-sub">${c.name} paid exactly $${o.total}!</div>` : ''}
-        ${change !== null && change > 0 ? `<div class="success-sub">You gave ${c.name} $${change} back!</div>` : ''}
-        ${sale.phase === 'drawer' ? `<div class="success-sub">$${o.total} and $${change} makes $${o.problem.m}.</div>` : ''}
-        <div class="bark">${pickOne(c.happy)}</div>
+        <div class="success-sub">It went into your wallet.</div>
+        ${echo ? `<div class="success-sub">${echo}</div>` : ''}
         <button id="standNext" class="big-btn ok">Next!</button>
       </div>`;
-    $('standPrompt').innerHTML = `${c.name} is happy!`;
+    /* The bubble switches to the goodbye instead of a second bubble being
+       stacked under the first. Set directly rather than through a 'done'
+       phase: nothing else re-renders after this, and a new phase value would
+       be a new state for every guard in the file to think about. */
+    const bark = $('standBark');
+    if (bark) bark.innerHTML = sale.happy;
+    $('standPrompt').innerHTML = '';
     play('ching');
     confetti(res && res.firstTry === false ? 10 : 16);
     $('standNext').addEventListener('click', () => {
@@ -737,6 +828,11 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
     }
     /* "Closed" is a scary word for a stand that is always open; the
        summary now advertises the comeback (clarity review). */
+    /* The summary can arrive straight off a receipt phase: "All done" is live
+       until her first miss, so tapping it on the change or drawer card routes
+       here without passing through completeSale, and the split grid would
+       otherwise still be on the card. */
+    setSplit(false);
     $('standCard').innerHTML = `
       <div class="success">
         <div class="success-big">All done for now!</div>

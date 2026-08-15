@@ -22,7 +22,7 @@ import { BOARDS } from './boards.js';
 import {
   openZones, nextZone, ZONE_INFO, STAND_SESSIONS_TO_OPEN
 } from './zones.js';
-import { makeKeypad, makeColumn, renderBills, toast, confetti } from './ui.js';
+import { makeKeypad, makeColumn, receipt, toast, confetti } from './ui.js';
 import { initSfx, play } from './sfx.js';
 
 /* Shelf headers are the only text naming a shelf, she reads them on every
@@ -718,44 +718,86 @@ export function initGame() {
      else. Copy naming the wrong bear undercuts the scene she is looking at. */
   function cashierName() { return inGrocery ? 'Sunny' : 'Benny'; }
 
-  function promptFor(p) {
+  /* THE ASK: one line, and it is only ever the question. Everything these
+     prompts used to state before asking (both amounts, who is holding them,
+     why money comes back) is a fact with a number attached, so it belongs in
+     the receipt underneath, where the label sits beside the figure it names.
+     Vocabulary is unchanged and still fixed game-wide: COSTS is the price,
+     PAYS WITH is the bill, GIVES BACK is the change. */
+  function askFor(p) {
+    if (p.mechanic === 'wallet') return '<b>How much is left?</b>';
+    if (p.mechanic === 'cashier') {
+      return `<b>Is $${p.offered} the right change?</b>`;
+    }
+    return `<b>How much change do you get?</b>`;
+  }
+
+  /* THE RECEIPT: minuend, subtrahend, then the row she is solving for, which
+     is the column scaffold's layout in words so both entry paths teach one
+     shape. Never rendered beside a column (see ui.js receipt). */
+  function receiptFor(p, bills) {
     if (p.mechanic === 'wallet') {
-      return `Your wallet has $${p.m}. You pay $${p.s}.
-        <b>How much is left?</b>`;
+      return receipt([
+        { label: 'Your wallet has', value: p.m },
+        { label: 'This costs', value: p.s },
+        { label: 'You will have', value: '?' }
+      ]);
     }
     if (p.mechanic === 'cashier') {
-      /* First cashier ever: name the new job in words. This is the only
-         yes/no question in the game and the first time an adult's number can
-         be wrong, and it was the one new idea arriving with no explainer.
-         Pronoun-free: nothing in the game says whether Benny or Sunny is a
-         he or a she. */
-      if (!kvLoad('taughtCashier', 0)) {
-        return `It costs $${p.s}. You pay ${cashierName()} $${p.m}.
-          ${cashierName()} hands back <b>$${p.offered}</b>.
-          Sometimes ${cashierName()} gets the change wrong!
-          <b>Is $${p.offered} the right change?</b>`;
-      }
-      return `It costs $${p.s}. You pay ${cashierName()} with $${p.m}.<br>
-        ${cashierName()} gives you <b>$${p.offered}</b> change.<br>
-        <b>Is that right?</b>`;
+      /* The offer is a ROW, highlighted, not a number buried in a sentence:
+         the whole task is judging that one figure against the two above it,
+         and putting all three in a column is what makes the comparison
+         something she can see rather than hold in her head. */
+      return receipt([
+        { label: 'You pay with', value: p.m, bills },
+        { label: 'It costs', value: p.s },
+        { label: `${cashierName()} gives back`, value: p.offered, hi: true }
+      ]);
     }
-    /* The change prompt states both amounts and the payee like its
-       siblings, and the first change purchase ever explains the bill-and-
-       change model in words (clarity review: the model is a cultural
-       convention, not discoverable, and the split rule rightly hides the
-       money visual that could teach it at this tier). */
-    /* Its OWN flag, separate from the stand's. Zone gating guarantees the
-       stand teaches change first, so a single shared flag meant this branch
-       was dead code for every new player and her only definition of change
-       became "money I hand away". The two directions are the whole point. */
-    if (!kvLoad('taughtChangeStore', 0)) {
-      return `It costs $${p.s}. You give ${cashierName()} $${p.m}.<br>
-        $${p.m} is more than $${p.s}! You get the extra money back.<br>
-        That is called change.
-        <b>How much change do you get?</b>`;
+    return receipt([
+      { label: 'You pay with', value: p.m, bills },
+      { label: 'It costs', value: p.s },
+      { label: 'You get back', value: '?' }
+    ]);
+  }
+
+  /* The judge's correction card, on both routes into it (she said no and was
+     right, or she thanked a wrong offer twice). Only the bottom row changes
+     from the receipt she has been reading: the offer becomes the row she is
+     solving for, so both operands stay exactly where they were.
+     THE COLUMN GUARD IS THE POINT of this being one function. A cashier
+     problem carries its own entry (finish() sets entry from the tier and the
+     stage, not from the mechanic), so a two_borrow tier regressed to stage 1
+     hands the correction a column, and both call sites used to print the
+     receipt anyway: the same two amounts twice on one card, and on a phone
+     the extra rows push the checkmark past the card's own cap. */
+  function correctionReceipt(p, note) {
+    const rows = p.entry === 'column' ? '' : receipt([
+      { label: 'You pay with', value: p.m, bills: p.money ? p.m : null },
+      { label: 'It costs', value: p.s },
+      { label: `${cashierName()} should give back`, value: '?' }
+    ]);
+    return rows + `<div class="assist-hint">${note}</div>`;
+  }
+
+  /* The one-time teaching lines, in the hint voice, under the receipt. Each
+     is one sentence now instead of a three-clause preamble welded onto the
+     front of the question.
+     taughtChangeStore has its OWN flag, separate from the stand's: zone
+     gating guarantees the stand teaches change first, so a single shared flag
+     made this branch dead code for every new player and her only definition
+     of change became "money I hand away". The two directions are the point.
+     Pronoun-free: nothing in the game says whether Benny or Sunny is a he
+     or a she. */
+  function teachFor(p) {
+    if (p.mechanic === 'cashier' && !kvLoad('taughtCashier', 0)) {
+      return `Sometimes ${cashierName()} gets the change wrong. Have a look!`;
     }
-    return `It costs $${p.s}. You pay ${cashierName()} with $${p.m}.
-      <b>How much does ${cashierName()} give back to you?</b>`;
+    if (p.mechanic === 'change' && !kvLoad('taughtChangeStore', 0)) {
+      return `You are paying more than it costs. The extra comes back to you.
+        That is called change.`;
+    }
+    return '';
   }
 
   function renderBuy() {
@@ -770,9 +812,8 @@ export function initGame() {
         <button id="buyClose" class="icon-btn" aria-label="close">×</button>
       </div>
       <div class="buy-prompt" id="buyPrompt">${inDeal
-        ? `Special deal! It was $${cur.deal.base}. Today it is $${cur.deal.off} off.
-           <b>$${cur.deal.base} take away $${cur.deal.off}. What does it cost now?</b>`
-        : (cur.deal ? `<b>Only $${price} today!</b> ` : '') + promptFor(p)}</div>
+        ? '<b>What does it cost now?</b>'
+        : askFor(p)}</div>
       <div id="buyBills"></div>
       <div class="buy-nudge" id="buyNudge"></div>
       <div id="buyBody"></div>`;
@@ -781,6 +822,19 @@ export function initGame() {
     /* A rebuilt card must not resurrect the x after a miss. */
     if (cur.anyMiss) $('buyClose').style.visibility = 'hidden';
     if (inDeal) {
+      /* The deal is a money story too, so it gets the same receipt: what it
+         was, what comes off, and the row she is filling. The old prose said
+         the subtraction twice, once in words and once as "$12 take away $3",
+         and then asked. */
+      $('buyBills').innerHTML = receipt([
+        { label: 'It was', value: cur.deal.base },
+        /* "Today you save", not "Today it is off by": a label that ends on a
+           preposition leaves her holding half a phrase across the gap to the
+           figure on the right, and every other row in the game resolves where
+           the label ends. */
+        { label: 'Today you save', value: cur.deal.off },
+        { label: 'It costs now', value: '?' }
+      ]);
       $('buyBody').innerHTML = `
         <div class="entry-wrap">
           <div id="entryArea"><div class="pad-display" id="padDisplay"></div></div>
@@ -803,21 +857,27 @@ export function initGame() {
       keypad.setGo(false);
       return;
     }
-    /* Split rule: bills appear only when the engine says money is allowed,
-       and only for tender mechanics (the tender is what she holds). The
-       caption keeps the inert row from reading as buttons or as the
-       change being judged (clarity review). */
-    if (p.money && (p.mechanic === 'change' || p.mechanic === 'cashier')) {
-      $('buyBills').innerHTML = `<div class="bills-cap">You pay with these bills:</div>
-        <div id="buyBillsRow"></div>`;
-      renderBills($('buyBillsRow'), p.m);
-    }
-    /* The wallet mechanic's "$ ?" chip hides behind the modal scrim, so
-       the card performs the chip's story itself (clarity review). */
-    if (p.mechanic === 'wallet') {
-      $('buyBills').insertAdjacentHTML('beforeend',
-        `<div class="card-chip" id="cardWallet">Wallet $ ?</div>`);
-    }
+    /* The receipt, plus the one-time teaching sentence under it. Split rule
+       is unchanged and still the engine's call: bills ride along as a row's
+       illustration only when p.money is set, which is the >= 50 tier. */
+    const bills = p.money && (p.mechanic === 'change' || p.mechanic === 'cashier')
+      ? p.m : null;
+    /* The deal price announcement moved out of the question. It used to be
+       welded onto the front of the prompt ("Only $9 today! It costs $9. You
+       pay Sunny with..."), which put a celebration in the middle of the ask. */
+    const notes = [cur.deal ? `Only $${price} today!` : '', teachFor(p)]
+      .filter(Boolean);
+    /* No receipt beside a column: the column shows both amounts already. The
+       cashier's judge card has no column, so its receipt always renders. */
+    const showReceipt = cur.phase === 'judge' || p.entry !== 'column';
+    $('buyBills').innerHTML = (showReceipt ? receiptFor(p, bills) : '')
+      + notes.map(n => `<div class="assist-hint">${n}</div>`).join('');
+    /* The wallet mechanic's on-card "Wallet $ ?" chip is GONE. It existed
+       because the real HUD chip hides behind the modal scrim, but the
+       receipt's own answer row is already that unknown, and two question
+       marks for one number on one card is the thing this pass is removing.
+       Gone end to end: the node, its .card-chip CSS and complete()'s reveal
+       of it. The success card says where the wallet landed instead. */
     if (cur.phase === 'judge') renderJudge();
     else renderEntry();
   }
@@ -884,17 +944,17 @@ export function initGame() {
         complete({ firstTry: cur.misses === 0, assisted: false });
       } else {
         cur.phase = 'entry';
-        /* Keep both operands on screen: the old one-line replacement wiped
-           the only place the tender appeared, leaving 10 minus 7 posed
-           with only the 7 visible (clarity review). */
-        /* Name the noun. "How much should IT be?" bound "it" to the price
-           (sentence one), and this very line wipes the rejected offer off the
-           card, so the only antecedent that could mean the change was gone: a
-           literal reader typed the price and took a miss on a problem she had
-           just got right. Never re-print the wrong offer here, it would be
-           the last numeral before the keypad. */
-        $('buyPrompt').innerHTML = `You are right! It costs $${p.s}.
-          You paid $${p.m}. <b>How much should ${cashierName()} give back?</b>`;
+        /* Both operands stay on screen, and now they stay in the receipt she
+           has been reading all along: only the bottom row changes, from the
+           rejected offer to the row she is solving for. The old handling
+           replaced the whole prompt, which wiped the only place the tender
+           appeared and left 10 minus 7 posed with only the 7 visible.
+           The wrong offer is NEVER reprinted here: as the last numeral before
+           the keypad it is the one a literal reader would type. */
+        $('buyPrompt').innerHTML =
+          `<b>How much should ${cashierName()} give back?</b>`;
+        $('buyBills').innerHTML = correctionReceipt(p,
+          'You were right, that was not the right change!');
         renderEntry();
       }
     } else {
@@ -939,12 +999,11 @@ export function initGame() {
       keypad.setGo(false);
     } else {
       cur.colW = null;
-      /* Show the subtraction. Two amounts buried in a three-clause sentence
-         is a lot to hold while working a keypad, and the column tier gets a
-         written sum for free while the keypad tier got nothing. */
-      $('entryArea').innerHTML =
-        `<div class="cups-math">$${p.m} − $${p.s}</div>
-         <div class="pad-display" id="padDisplay"></div>`;
+      /* The written sum used to live here, because the two amounts were
+         otherwise buried in a three-clause sentence. The receipt above the
+         entry row now holds both, so a strip here would be the third place
+         this card states the same subtraction. */
+      $('entryArea').innerHTML = `<div class="pad-display" id="padDisplay"></div>`;
       paintPad();
       keypad.setGo(false);
     }
@@ -1107,10 +1166,12 @@ export function initGame() {
       return;
     }
     if (cur.phase === 'judge') {
-      /* She thanked a wrong offer twice; move to a guided correction. */
+      /* She thanked a wrong offer twice; move to a guided correction. The
+         amounts stay in the receipt rather than being restated in prose. */
       cur.phase = 'entry';
-      $('buyPrompt').innerHTML = `${cashierName()} made a mistake! It costs
-        $${p.s}. You paid $${p.m}. <b>Let's find the right change.</b>`;
+      $('buyPrompt').innerHTML = `<b>Let's find the right change.</b>`;
+      $('buyBills').innerHTML =
+        correctionReceipt(p, `${cashierName()} made a mistake!`);
       renderEntry();
     }
     if (cur.colW) {
@@ -1225,8 +1286,6 @@ export function initGame() {
        paid, what came back (naming "change" on the first one), and where
        her wallet landed. Numerals only; split rule untouched. */
     const change = p.mechanic === 'wallet' ? null : p.answer;
-    const cw = $('cardWallet');
-    if (cw) cw.textContent = `Wallet $${state.wallet}`;
     /* The × goes with the question it belonged to. It used to survive into
        this card still bright and pressable, and cancelBuy refuses a submitted
        purchase, so it pressed down under her finger and did nothing on EVERY
@@ -1238,6 +1297,9 @@ export function initGame() {
     const bx = $('buyClose');
     if (bx) bx.style.visibility = 'hidden';
     $('buyPrompt').innerHTML = '';
+    /* The receipt goes with the question, for the same reason: its answer row
+       is a live "?" and leaving it up re-poses a sum she has just solved. */
+    $('buyBills').innerHTML = '';
     const taughtNow = firstChange && change > 0
       ? `<div class="success-sub">$${change} back! That is your change.</div>`
       : change !== null && change > 0

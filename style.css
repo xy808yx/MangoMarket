@@ -475,25 +475,84 @@ body {
    ONLY queue UI on a phone, where the tokens are hidden. 0.72 measures 6.0:1
    and still sits clearly behind the name and the bark. One shade for every
    caption in the game: few sizes, few faces, high contrast. */
-.bills-cap, .block-cap {
+.block-cap {
   font-size: 18px;
   font-weight: 700;
   color: rgba(43, 33, 24, 0.72);
 }
 
-.bills-cap { margin-top: 8px; }
-
 .block-cap { text-align: center; margin-bottom: 2px; }
-.card-chip {
-  display: inline-block;
-  font-size: 22px;
-  font-weight: 800;
-  background: var(--mango);
+/* THE RECEIPT. Replaces the money-story paragraph on every card that has one.
+   Labels left, amounts right, the row she is solving for last and separated by
+   a rule, which is the column scaffold's own top-to-bottom layout expressed in
+   words. Tabular numerals so the amounts line up in a column she can compare
+   down, which is the whole point of putting them in rows.
+   Ink on paper inside the cream card, like the answer box and the keys: this
+   is a thing to READ, and the card's own cream is the ground everything else
+   sits on. */
+.receipt {
+  background: var(--paper);
   border: 3px solid var(--ink);
-  border-radius: 999px;
-  padding: 6px 16px;
-  margin: 8px 0;
+  border-radius: 18px;
+  padding: 10px 16px;
+  margin: 10px 0 6px;
 }
+
+.r-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 20px;
+  font-weight: 700;
+  /* Same 0.72 ink as every other caption in the game: the label is set back
+     so the amount leads, and 0.6 misses the 4.5:1 floor on paper. */
+  color: rgba(43, 33, 24, 0.72);
+  padding: 5px 0;
+}
+
+.r-line b {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The row she is filling. The rule above it is the subtraction line. */
+.r-ask {
+  border-top: 3px solid rgba(43, 33, 24, 0.25);
+  margin-top: 4px;
+  padding-top: 9px;
+  color: var(--ink);
+}
+
+/* Both of these have to out-specify `.r-line b`, which sets the ink colour
+   for every amount. Written as bare `.r-q` the mango lost and the answer row
+   rendered in plain ink, which made the one row she is filling look like the
+   two facts above it.
+   --mango-deep, NOT --mango2, and that is the same measurement the palette
+   comment records: #F58A2E on the receipt's paper is 2.4:1, which misses even
+   the 3:1 large-text floor, and this glyph is the one mark on the card that
+   says WHICH row she is filling. #B45309 measures 4.9:1 on the same ground.
+   The two mangoes never share a card (a `?` row and a judged offer are
+   different receipts), so one colour serves both marks. */
+.r-line b.r-q { color: var(--mango-deep); }
+
+/* The cashier's offer: the one figure the card is asking her to judge. */
+.r-hi b { color: var(--mango-deep); }
+
+/* The bill fan hangs off the row it illustrates, so the row's own label is
+   its caption and no second caption is needed.
+   Written `.bills.r-bills` on purpose: the element carries both classes, and
+   the phone tier sets `.bills { margin: 6px 0 }` further down this file at
+   equal specificity, so a bare `.r-bills` lost on source order and this rule
+   painted nowhere but iPad portrait. Same trap as the dead compact rules the
+   banner below is about; the extra class buys the weight instead. */
+.bills.r-bills { margin: 2px 0 4px; }
+
+/* Five or more bills wrap to a second row inside a phone card. Shrinking them
+   keeps that second row cheap; ui.js drops the fan altogether past eight. */
+.bills-many .bill { font-size: 15px; padding: 4px 8px; border-width: 2px; }
 
 .buy-nudge {
   min-height: 30px;
@@ -525,7 +584,11 @@ body {
 .pad-display {
   font-size: 46px;
   font-weight: 800;
-  min-width: 150px;
+  /* Width MATCHES the keypad under it (3 x 76 + 2 x 10). The box used to be
+     150px over a 248px pad, so the sum, the box and the keys were three
+     different widths stacked down the middle of the card and never read as
+     one object. Every tier below re-states it against that tier's keys. */
+  min-width: 248px;
   min-height: 76px;
   display: grid;
   place-items: center;
@@ -1152,11 +1215,14 @@ body {
   .bark { font-size: 20px; padding: 8px 14px; }
   .bills { gap: 6px; margin: 6px 0; }
   .bill { font-size: 18px; padding: 6px 10px; }
-  .bills-cap { font-size: 16px; margin-top: 6px; }
   .block-cap { font-size: 16px; }
   .assist-hint { font-size: 16px; margin-top: 4px; }
+  .receipt { padding: 8px 14px; margin: 8px 0 4px; border-radius: 16px; }
+  .r-line { font-size: 17px; padding: 4px 0; }
+  .r-line b { font-size: 27px; }
+  .r-ask { padding-top: 7px; margin-top: 3px; }
   .buy-nudge { min-height: 22px; font-size: 20px; }
-  .pad-display { min-height: 58px; font-size: 38px; }
+  .pad-display { min-height: 58px; font-size: 38px; min-width: 208px; }
   .pad-display:empty::after { height: 38px; }
   .entry-wrap { gap: 8px; margin-top: 2px; }
   .keypad { grid-template-columns: repeat(3, 64px); gap: 8px; }
@@ -1221,11 +1287,10 @@ body {
      they were written. This file has been burned by dead media queries once
      already; the margin below is the only queue rule that still paints. */
   .stand-queue { margin: 0; gap: 2px; }
-  .block-cap, .bills-cap { font-size: 14px; }
-  .bills-cap { margin-top: 2px; }
+  .block-cap { font-size: 14px; }
   .buy-nudge { min-height: 14px; font-size: 16px; }
   .entry-wrap { gap: 10px; margin-top: 2px; }
-  .pad-display { min-height: 44px; font-size: 30px; padding: 4px 14px; min-width: 110px; }
+  .pad-display { min-height: 44px; font-size: 30px; padding: 4px 14px; min-width: 180px; }
   .pad-display:empty::after { height: 30px; }
   .keypad { grid-template-columns: repeat(3, 56px); gap: 6px; }
   .key { width: 56px; height: 42px; font-size: 24px; }
@@ -1236,6 +1301,88 @@ body {
   .col-row { grid-template-columns: 26px repeat(var(--cols), 40px); }
   .col-rule { width: calc(26px + var(--cols) * 40px); margin: 2px 0; }
   .assist-hint { font-size: 14px; margin-top: 0; }
+  /* THE RECEIPT TURNS SIDEWAYS on a landscape phone, and this is a
+     measurement, not a preference. This tier is 393px tall and 852px wide:
+     the old prose was cheap here because width bought it lines, while three
+     stacked rows cost a fixed ~150px and pushed the checkmark up to 86px
+     past the fold at every mechanic except the judge. As three columns the
+     same facts cost about 46px. The subtraction rule becomes a left border,
+     so the answer is still visibly set apart from the two facts; it stops
+     teaching the top-to-bottom column shape, which is a fair trade on the
+     one viewport where reaching the checkmark is the binding constraint.
+     The bill fan is dropped here for the same reason: numerals alone are
+     legal at every tier, and the row label still states the amount. */
+  .receipt {
+    display: flex;
+    justify-content: space-around;
+    align-items: stretch;
+    padding: 5px 10px;
+    margin: 3px 0 2px;
+    border-width: 2px;
+  }
+  .r-line {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 0;
+    font-size: 14px;
+    padding: 0 10px;
+  }
+  .r-line b { font-size: 21px; }
+  .r-ask {
+    border-top: none;
+    border-left: 2px solid rgba(43, 33, 24, 0.25);
+    margin-top: 0;
+    padding-top: 0;
+  }
+  .r-bills { display: none; }
+
+  /* THE SPLIT CARD. A landscape phone gives the stand card 852px of width and
+     377px of usable height, and the stand carries a head row, a queue line and
+     a speech bubble that the store card does not: stacking the receipt above
+     the keypad measured 46px past the fold. Beside it, the same content fits
+     with room to spare. stand.js adds .split only on the phases that render a
+     receipt, so the order card never gets an empty left column. */
+  .stand-modal .card.split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: 14px;
+  }
+  .stand-modal .card.split > .stand-head,
+  .stand-modal .card.split > .stand-queue,
+  .stand-modal .card.split > .bark,
+  .stand-modal .card.split > .buy-prompt { grid-column: 1 / -1; }
+  /* Rows are placed EXPLICITLY. Left to auto-placement, the body's `span 2`
+     could not start above the sparse cursor, which by then had passed the
+     nudge, so it opened a seventh row and the card grew instead of shrinking:
+     measured 111px of overflow, worse than the stacked layout it replaced. */
+  .stand-modal .card.split > #standBills { grid-column: 1; grid-row: 5; }
+  .stand-modal .card.split > .buy-nudge { grid-column: 1; grid-row: 6; }
+  .stand-modal .card.split > #standBody { grid-column: 2; grid-row: 5 / span 2; }
+  /* The entry stacks INSIDE its column here, which is what buys the left
+     column enough width for the teaching sentence: side by side the body
+     needed 370 of the 629px available and the receipt's own rows wrapped. */
+  .stand-modal .card.split .entry-wrap { flex-direction: column; gap: 6px; }
+  /* Stacked inside its own column, the receipt is back to rows: the column it
+     now sits in is narrow, and three side-by-side facts would wrap. */
+  .stand-modal .card.split .receipt {
+    display: block;
+    padding: 5px 12px;
+  }
+  .stand-modal .card.split .r-line {
+    flex-direction: row;
+    justify-content: space-between;
+    text-align: left;
+    padding: 1px 0;
+  }
+  .stand-modal .card.split .r-ask {
+    border-left: none;
+    border-top: 2px solid rgba(43, 33, 24, 0.25);
+    padding-top: 3px;
+    margin-top: 2px;
+  }
   .cups-math { font-size: 22px; margin: 0; }
   .cups-row img { width: 34px; height: 34px; }
   .cups-mini img { width: 30px; height: 30px; }
