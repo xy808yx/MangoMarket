@@ -1,5 +1,5 @@
 /* Mango Market service worker. Bump CACHE on every deploy. */
-const CACHE = 'mango-v10';
+const CACHE = 'mango-v11';
 
 /* Everything the game needs to boot offline. Music MP3s are deliberately
    NOT here: they may not exist yet (they are added when the tracks are ready),

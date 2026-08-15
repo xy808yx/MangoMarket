@@ -1197,6 +1197,28 @@ body {
 
 .p-fact span { opacity: 0.55; font-size: 14px; }
 
+/* The legend swatch carries the SAME base as a grid cell: paper ground, 2px
+   solid border. Without it two of the four keys paint nothing, because
+   b-counting sets a border colour and width but no STYLE, and b-unseen is
+   only an opacity, so on a bare transparent span both came out invisible.
+
+   IT MUST BE DECLARED ABOVE THE .b-* RULES, and that ordering is load
+   bearing. .p-key and .b-automatic have equal specificity, so whichever is
+   written last wins: declared below them, this rule's paper background
+   repainted every swatch cream and the legend lost its colours entirely.
+   Same class of trap the compact rules and .r-bills hit, so the fix is the
+   same discipline: when two rules of equal weight disagree, order decides,
+   and the general one goes first. */
+.p-key {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  display: inline-block;
+  flex: none;
+  background: var(--paper);
+  border: 2px solid rgba(43, 33, 24, 0.3);
+}
+
 .b-unseen { opacity: 0.45; }
 .b-counting { border-color: var(--mango-deep); border-width: 3px; }
 .b-consolidating { background: #FFF1D6; border-color: var(--mango-deep); }
@@ -1217,21 +1239,6 @@ body {
   margin: 4px 0 2px;
 }
 
-/* The swatch needs the SAME base the cells have (paper ground, 2px solid
-   border) or two of the four states paint nothing at all: b-counting sets a
-   border colour and width but no style, and b-unseen is only an opacity, so
-   on a bare transparent span both legend keys came out invisible and the
-   legend explained two states out of four. A key that cannot show a state is
-   worse than no key. */
-.p-key {
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
-  display: inline-block;
-  flex: none;
-  background: var(--paper);
-  border: 2px solid rgba(43, 33, 24, 0.3);
-}
 
 .p-fact-cap {
   font-size: 15px;
