@@ -1217,11 +1217,20 @@ body {
   margin: 4px 0 2px;
 }
 
+/* The swatch needs the SAME base the cells have (paper ground, 2px solid
+   border) or two of the four states paint nothing at all: b-counting sets a
+   border colour and width but no style, and b-unseen is only an opacity, so
+   on a bare transparent span both legend keys came out invisible and the
+   legend explained two states out of four. A key that cannot show a state is
+   worse than no key. */
 .p-key {
   width: 20px;
   height: 20px;
   border-radius: 6px;
   display: inline-block;
+  flex: none;
+  background: var(--paper);
+  border: 2px solid rgba(43, 33, 24, 0.3);
 }
 
 .p-fact-cap {
