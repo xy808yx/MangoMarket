@@ -3,7 +3,7 @@
    or column per the engine's split rule), the no-fail retry ladder, and
    the wallet/wishlist HUD.
 
-   Pedagogy contract (SPEC.md, CLAUDE.md rules): the engine decides entry
+   Pedagogy contract: the engine decides entry
    mode, money visuals and mechanics; this file must never override
    problem.entry or problem.money. Wrong answer: warm nudge and retry, then
    the scaffold solves it WITH her and the sale always completes. The UI
@@ -366,9 +366,9 @@ export function initGame() {
     const hideWallet = cur && cur.problem
       && cur.problem.mechanic === 'wallet' && !cur.done;
     /* Chips say what they are in words (clarity review): the bare "$20"
-       was never introduced as HER money, the slash fraction reads as
-       division to a multiplication-strong kid, and the bare star scored
-       points instead of naming wishes. */
+       was never introduced as the player's own money, a slash fraction
+       reads as division to anyone already fluent in multiplication, and the
+       bare star scored points instead of naming wishes. */
     $('walletChip').textContent = hideWallet ? 'Wallet $ ?' : 'Wallet $' + state.wallet;
     paintChips();
     const done = trip.slots.filter(s => s.bought).length;

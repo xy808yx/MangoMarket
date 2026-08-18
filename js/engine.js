@@ -1,8 +1,8 @@
 /* Mango Market math engine. Headless on purpose: no DOM, no three.js, so
    tools/sim.mjs can drive it under node exactly as the game will in the
-   browser. SPEC.md Decisions is the contract; the pedagogy rules encoded
-   here (split rule, scaffold stages, mastery gates) change only as a
-   deliberate design decision.
+   browser. The pedagogy rules encoded here (split rule, scaffold stages,
+   mastery gates) are the contract and change only as a deliberate design
+   decision.
 
    Fact classes (tier = what the problem is, not where it appears):
      single      minuend 2..10, includes make-ten change from a $5 or $10

@@ -1,5 +1,5 @@
 /* Mango Market regulars. Headless data: no DOM, no three.js. Eight named
-   animals whose traits shape the stand math (SPEC.md Freshness). Traits map
+   animals whose traits shape the stand math. Traits map
    straight onto engine standOrder(opts): tender forces a big bill into the
    drawer, exact skips the change problem entirely. Customers with no trait
    take the engine's natural roll (keypad change, sometimes the drawer).

@@ -153,7 +153,7 @@ export function initSfx({ mode = 'day' } = {}) {
     musicMode = mode;
     /* PERMANENT gesture listener: a one-shot would leave no recovery from
        the iOS 'interrupted' state (Siri and call banners do not toggle
-       document.hidden, so visibilitychange never sees them; the kid's next
+       document.hidden, so visibilitychange never sees them; the player's next
        tap is the only reliable wake signal). One state check per tap is
        free; removing the listener buys nothing. */
     document.addEventListener('pointerdown', () => {

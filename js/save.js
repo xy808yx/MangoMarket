@@ -1,5 +1,5 @@
-/* Mango Market storage. store/load with mangomarket_ keys (Math Blaster
-   pattern), plus the save schema. Headless-safe: falls back to an in-memory
+/* Mango Market storage. store/load with prefixed mangomarket_ keys, plus
+   the save schema. Headless-safe: falls back to an in-memory
    map when localStorage is unavailable so tools/sim.mjs can run under node. */
 
 import { STAND_SESSIONS_TO_OPEN } from './zones.js';
