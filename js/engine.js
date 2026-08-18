@@ -31,7 +31,7 @@ export const TUNING = {
   borrowShare: { fresh: 0.45, easyMastered: 0.75 },
   factSteer: 0.75,     // chance a small change problem aims at the neediest fact
   teensReview: 0.45,   // chance an escalation aims BACK at a crossing-ten fact
-  bridgeRun: 3,        // consecutive first-try corrects that fade one bridge stage
+  bridgeRun: 3,        // consecutive first-try corrects before a fact counts as holding
   listMin: 3,
   listMax: 5,
   reviewShare: 0.25    // shopping list slots pulled from earlier aisles
@@ -69,8 +69,8 @@ export const AISLES = [
    when it is really fact recall failing.
 
    The tier records answer "how is she doing at teens". These answer "how is
-   she doing at 15 - 8", which is what the bridge fades against and what the
-   shopping steer aims at. */
+   she doing at 15 - 8", which is what the shopping steer aims at and what the
+   parent grid draws. */
 export const FACTS = (() => {
   const out = [];
   for (let a = 2; a <= 9; a++) for (let b = 2; b <= a; b++) out.push(a + '-' + b);
@@ -90,13 +90,17 @@ export function factKey(m, s) {
   return FACT_SET.has(k) ? k : null;
 }
 
-/* bridge is the addition-scaffold stage for this one fact:
-     0 cold, the bridge is on screen while she solves
-     1 warm, the bridge appears only if she misses
-     2 hot, no bridge
-   run is consecutive first-try corrects, which is what advances the stage.
+/* bridge is how well this one fact is HOLDING, 0 to 2. It is named for the
+   on-card addition hint whose three stages it used to drive; that hint was cut
+   (see ui.js for why and for what any replacement must not do) and the counter
+   stayed, because what it measures was never really about the hint. Two live
+   readers depend on it: factNeed ranks a fact that is not yet holding as
+   needier, and stats() will not call a fact known cold until it reaches 2.
+   THE FIELD KEEPS ITS NAME. It is a persisted save key, the schema is frozen
+   and sim-verified, and a rename buys a migration for nothing.
+   run is consecutive first-try corrects, which is what advances it.
    lastOk is whether the most recent attempt was first-try correct: one
-   wrong answer is what drops a stage and what turns the parent grid red. */
+   wrong answer is what drops it and what turns the parent grid red. */
 export function factRecord() {
   return { n: 0, ok: 0, run: 0, bridge: 0, miss: 0, lastOk: false };
 }
@@ -242,7 +246,7 @@ export function createEngine({ state, rng, persist }) {
        recently wrong        -> highest
        never seen            -> next, so coverage happens at all
        never right first try -> next
-       still on the bridge   -> mid, needier the colder the bridge
+       not holding yet       -> mid, needier the further off holding it is
        solid and unaided     -> lowest, and it keeps sinking with the run
      Facts she owns still come up constantly, because they are what most
      prices naturally produce. That is the brief's 1-target-to-3-known mix
@@ -306,9 +310,11 @@ export function createEngine({ state, rng, persist }) {
     p.stage = state.tiers[p.tier].stage;
     p.money = p.m >= TUNING.moneyMin;
     p.entry = (SCAFFOLDED.has(p.tier) && p.stage < 2) ? 'column' : 'keypad';
-    /* The addition bridge, read but never written here: generation must stay
+    /* The holding counter, read but never written here: generation must stay
        side-effect free (forceMech rerolls purchaseProblem). A fact with no
-       record yet is cold, which is the default a new fact should have. */
+       record yet reads 0, which is the right default for one never met. The
+       UI no longer draws anything from p.bridge; the sim still asserts it, and
+       it stays on the problem because that is where the sim can see it. */
     p.fact = factKey(p.m, p.s);
     p.bridge = p.fact ? (state.facts[p.fact] ? state.facts[p.fact].bridge : 0) : null;
     if (p.mechanic === 'cashier') {
@@ -548,7 +554,7 @@ export function createEngine({ state, rng, persist }) {
     if (t.hist.length > 60) t.hist.shift();
     /* The per-fact record runs ALONGSIDE the tier history, never instead of
        it. The tier owns the aisle gates and the column scaffold; the fact
-       owns the addition bridge and the shopping steer. Both fade and regress
+       owns the shopping steer and the parent grid. Both fade and regress
        SILENTLY here: a fade toast per fact would fire constantly across 72 of
        them, and a regress must never be announced (no-fail rule). */
     if (p.fact) {
@@ -632,8 +638,8 @@ export function createEngine({ state, rng, persist }) {
   /* The 72-fact picture, for the parent panel.
 
      The bands are named for what THIS game can observe. There are no clocks
-     here, so "automatic" means unaided and holding: the bridge is gone and a
-     run of first-try corrects is standing behind it. It deliberately does not
+     here, so "automatic" means unaided and holding: the fact has stopped
+     slipping and a run of first-try corrects stands behind it. It does not
      mean "under two seconds". Timed retrieval is the drill app's measurement,
      and putting a stopwatch on a young player buying a mango is exactly the
      pressure this game exists without. */

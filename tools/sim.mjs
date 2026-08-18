@@ -107,9 +107,9 @@ function run(opts) {
       err(sess, `tier ${p.tier} above frontier`);
     }
     if (p.m > 999) err(sess, `minuend ${p.m} above the $999 contract`);
-    /* The fluency-fact tag must agree with the fact set, and the bridge only
-       exists on tagged problems. A stale tag would aim the shopping steer and
-       the parent grid at the wrong fact. */
+    /* The fluency-fact tag must agree with the fact set, and the holding
+       counter only exists on tagged problems. A stale tag would aim the
+       shopping steer and the parent grid at the wrong fact. */
     if (p.fact !== factKey(p.m, p.s)) err(sess, `fact tag ${p.fact} on ${p.m}-${p.s}`);
     if (p.fact && !(p.bridge >= 0 && p.bridge <= 2)) {
       err(sess, `bridge ${p.bridge} on ${p.fact}`);

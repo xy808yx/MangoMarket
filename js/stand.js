@@ -22,7 +22,7 @@ import { columns, diagnose } from './engine.js';
 import { CUSTOMERS, BY_CUSTOMER_ID, CUP_SIZES } from './data/customers.js';
 import { store as kvStore, load as kvLoad } from './save.js';
 import {
-  makeKeypad, makeColumn, makeDrawer, DRAWER_DENOMS, receipt, bridge, bridgeTeachable,
+  makeKeypad, makeColumn, makeDrawer, DRAWER_DENOMS, receipt,
   toast, confetti
 } from './ui.js';
 import { play } from './sfx.js';
@@ -264,40 +264,11 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
     renderPhase();
   }
 
-  /* The addition bridge slot. Cold (stage 0) shows it with the card; warm
-     (stage 1) waits for a miss and is why this is painted into its own node
-     rather than baked into the receipt: filling it on a miss must not rebuild
-     the receipt, which would wipe whatever she has typed. Hot (stage 2) never
-     shows it, and neither does a column card (the column is its own method
-     and two scaffolds at once is one too many). */
-  function paintBridge(afterMiss) {
-    const p = sale.order.problem;
-    const host = $('standBridge');
-    if (!host) return;
-    if (!p || p.bridge === null || p.bridge >= 2 || sale.colW) {
-      host.innerHTML = '';
-      return;
-    }
-    /* Never on the same card as the change lesson itself. That card is already
-       introducing what change IS, which is a bigger idea than any one fact,
-       and a second new notation underneath it is one thing too many at once.
-       It measured as a layout problem too: both lines are one-time, so they
-       land together on exactly one card, and that card went 22px past the fold
-       on a 393x852 phone. The bridge starts from her second change sale. */
-    if (!kvLoad('taughtChangeStand', 0)) { host.innerHTML = ''; return; }
-    if (p.bridge > 0 && !afterMiss) { host.innerHTML = ''; return; }
-    const teach = bridgeTeachable() && !kvLoad('bridgeTaught', 0);
-    host.innerHTML = bridge(p.m, p.s, teach);
-    if (teach) kvStore('bridgeTaught', 1);
-  }
-
   function noteMiss(which) {
     sale.misses[which]++;
     sale.anyMiss = true;
     const x = $('standClose');
     if (x) x.style.visibility = 'hidden';
-    /* A miss is exactly when the warm bridge earns its place. */
-    if (which === 'change') paintBridge(true);
   }
 
   function cancel() {
@@ -330,22 +301,16 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
   }
 
   /* ---- phases ---- */
-  /* The cup menu strip: all three sizes with prices, the ordered one
-     highlighted, so a changing per-cup price reads as HER price list and
-     not an arbitrary number (clarity review). */
-  function menuStrip(per) {
-    /* The size WORD has to be here: the order says "3 Medium cups, please!"
-       and Medium appeared nowhere on the menu, and the thumbnails cannot
-       carry the cue because renderThumb normalises every model to its own
-       bounding box (the small cup rendered widest of the three). */
-    return `<div class="cups-menu">${[2, 3, 4].map(p => `
-      <span class="menu-cup cup-${p}${p === per ? ' menu-hi' : ''}">
-        <img alt="" src="${world.thumbnail(CUP_ITEMS[p])}">
-        <span>${CUP_SIZES[p]}</span>
-        <span>$${p}</span>
-      </span>`).join('')}</div>`;
-  }
-
+  /* THE CUP PRICE MENU IS GONE (Aug 15 2026). menuStrip() drew all three
+     sizes with their prices under a "Your prices" caption, above the order.
+     It was built when a sale still asked the player to work out cups x price:
+     the menu was where that price came from, and it kept a changing per-cup
+     price reading as HER price list rather than an arbitrary number. The stand
+     stopped posing that question, so the menu was answering a question the
+     card no longer asks, and in review it did not read as anything at all. If
+     a pricing idea comes back it belongs to a later part of the game, not to
+     the first thing a new player meets. What remains is one captioned picture
+     group: the order itself, and the sentence that states what it costs. */
   function renderPhase() {
     const o = sale.order;
     const c = sale.customer;
@@ -364,17 +329,12 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
       /* The order is in the bubble now; this row would only repeat it. The
          button underneath already says what to do. */
       $('standPrompt').innerHTML = '';
-      /* Both cup groups are captioned. Unlabelled, the price list and the
-         order were the same picture twice on one card, and a menu that
-         highlights Medium sat directly above one Medium cup with nothing
-         saying that the top row is what things cost and the bottom row is
-         what she has to make. */
+      /* The one remaining picture group keeps its caption. The rule is that a
+         picture group is always labelled with what it means, and it is not
+         weaker now that there is only one of them: without the caption the
+         cups read as decoration rather than as the order she has to fill. */
       $('standBody').innerHTML = `
         <div class="stand-order">
-          <div class="cup-block">
-            <div class="block-cap">Your prices</div>
-            ${menuStrip(o.per)}
-          </div>
           <div class="cup-block">
             <div class="block-cap">${c.name} wants</div>
             <div class="cups-row">${cupImgs(o)}</div>
@@ -418,8 +378,7 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
          same-picture-twice defect the caption rule exists to stop. The
          teaching line still shows on both paths. */
       $('standBills').innerHTML =
-        (p.entry === 'column' ? '' : changeReceipt(c, p))
-        + '<div id="standBridge"></div>' + teach;
+        (p.entry === 'column' ? '' : changeReceipt(c, p)) + teach;
       if (p.entry !== 'column') setSplit(true);
       $('standBody').innerHTML = `
         <div class="entry-wrap">
@@ -441,7 +400,6 @@ export function createStand({ engine, state, world, hud, onEvents, onExit, onSes
         paintPad();
         keypad.setGo(false);
       }
-      paintBridge(false);
     } else if (sale.phase === 'drawer') {
       const p = o.problem;
       /* One line, and it names the actor and the GESTURE: "count up" alone

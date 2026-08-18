@@ -38,16 +38,21 @@ const STAGE_LABELS = ['Full help', 'Less help', 'No help'];
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /* The bands, in plain words. "Automatic" is the honest name for what this
-   game can see: she answered unaided, with no addition bridge under it, three
-   times running. It is NOT a claim about speed. This game has no clocks in it
-   by design, so a green here means solid, not fast. */
+   game can see: she answered it unaided and it has held, three times running.
+   It is NOT a claim about speed. This game has no clocks in it by design, so
+   a green here means solid, not fast. */
 const BAND_LABELS = {
   unseen: 'Not met yet',
   counting: 'Still working it out',
   consolidating: 'Getting there',
   automatic: 'Knows it'
 };
-const BRIDGE_LABELS = ['with the + hint', 'hint on a slip', 'no hint'];
+/* The per-fact `bridge` counter, in plain words. It used to say which form of
+   the on-card addition hint that fact was getting; the hint is gone and the
+   counter now says only how well the fact is holding, which is what it always
+   actually measured (three clean first-try answers advance it, one wrong
+   answer drops it). Labels must never imply help that is no longer on screen. */
+const HOLD_LABELS = ['not holding yet', 'starting to hold', 'holding steady'];
 
 const $ = id => document.getElementById(id);
 
@@ -218,7 +223,7 @@ export function initParent(engine) {
           : `<b>${r.m} − ${r.s} = ${r.m - r.s}</b> · ${BAND_LABELS[r.band]} ·
              ${r.n} ${r.n === 1 ? 'try' : 'tries'}, ${r.ok} first-try,
              ${r.miss} ${r.miss === 1 ? 'slip' : 'slips'} ·
-             now shown ${BRIDGE_LABELS[r.bridge]}`;
+             ${HOLD_LABELS[r.bridge]}`;
       });
     }
   }

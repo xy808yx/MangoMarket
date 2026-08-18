@@ -541,45 +541,11 @@ body {
 /* The cashier's offer: the one figure the card is asking her to judge. */
 .r-hi b { color: var(--mango-deep); }
 
-/* THE ADDITION BRIDGE. Leaf, not mango, and that carries meaning rather than
-   taste: mango marks the thing she is being ASKED for (the receipt's ? row,
-   the judged offer), and the bridge is the opposite, a thing she is being
-   GIVEN. Painting it mango would put two marks of the same colour on one card
-   competing to be the question. Leaf is the game's help colour already: the
-   teaching hint under the receipt is leaf, and so is the go key.
-   It sits BELOW the receipt and ABOVE the nudge band, so the card reads ask,
-   facts, help, feedback, keys. */
-.bridge {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  margin: 2px 0 6px;
-}
-
-.bridge-cap {
-  font-size: 15px;
-  font-weight: 700;
-  text-align: center;
-  color: var(--leaf);
-  line-height: 1.25;
-}
-
-/* Tabular figures so 8 + ? = 15 does not jitter its own width between one
-   fact and the next, and the same 800 weight as the receipt's amounts: this
-   is a sum she reads, not a caption. */
-.bridge-sum {
-  font-size: 26px;
-  font-weight: 800;
-  color: var(--leaf);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.5px;
-}
-
-/* The blank. Deliberately the same glyph and weight as the receipt's ? so the
-   two blanks on a card read as the same kind of hole, one in the subtraction
-   and one in the addition that answers it. */
-.bridge-q { color: var(--mango-deep); font-weight: 800; }
+/* The addition bridge's .bridge / .bridge-cap / .bridge-sum / .bridge-q rules
+   were HERE and are gone with the hint itself (see the note in ui.js). The
+   answer row's `?` is the only blank on a card again, which is what
+   `.r-line b.r-q` above is for: one mango mark per card, and it means "this is
+   the hole you are filling". Do not reintroduce a second one. */
 
 /* The bill fan hangs off the row it illustrates, so the row's own label is
    its caption and no second caption is needed.
@@ -949,38 +915,12 @@ body {
   margin-right: 10px;
 }
 
-/* Her price list: three cups with prices, the ordered one highlighted. */
-.cups-menu {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  align-items: end;
-  margin-bottom: 8px;
-}
-.menu-cup {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  white-space: nowrap;
-  /* Stays 18: at 20 the three size words plus borders overflow a 393px card. */
-  font-size: 18px;
-  font-weight: 800;
-  border: 3px solid transparent;
-  border-radius: 14px;
-  padding: 4px 8px;
-  opacity: 0.6;
-}
-/* The thumbnail renderer normalises every model to its own bounding box, so
-   the three cups came out 29.0, 30.0 and 30.7px and the SMALL one was widest.
-   Size them here or the picture contradicts the word under it. */
-.menu-cup img { width: 44px; height: 44px; }
-.menu-cup.cup-2 img { width: 34px; height: 34px; }
-.menu-cup.cup-4 img { width: 54px; height: 54px; }
-.menu-cup.menu-hi {
-  border-color: var(--ink);
-  background: var(--paper);
-  opacity: 1;
-}
+/* The .cups-menu / .menu-cup price-list rules were HERE and are gone with the
+   menu itself (see stand.js renderPhase). Their thumbnail sizing lesson is
+   still live for any cup picture: the renderer normalises every model to its
+   own bounding box, so the three cups came out 29.0, 30.0 and 30.7px and the
+   SMALL one was widest. Size cups explicitly or the picture contradicts the
+   word beside it. */
 
 .bark {
   font-size: 24px;
@@ -1447,14 +1387,6 @@ body {
      they were written. This file has been burned by dead media queries once
      already; the margin below is the only queue rule that still paints. */
   .stand-queue { margin: 0; gap: 2px; }
-  /* The bridge shrinks to its sum. Landscape phone is the one viewport where
-     reaching the checkmark is the binding constraint, and the full-size bridge
-     measured 53px of overflow with the go key 19px past the fold. The teaching
-     sentence is dropped in JS (bridgeTeachable in ui.js) rather than by a
-     display:none here, so the one-time flag is never burned on a screen that
-     did not show it. */
-  .bridge { margin: 0; gap: 0; line-height: 1.1; }
-  .bridge-sum { font-size: 18px; }
   .block-cap { font-size: 14px; }
   .buy-nudge { min-height: 14px; font-size: 16px; }
   .entry-wrap { gap: 10px; margin-top: 2px; }
@@ -1554,11 +1486,6 @@ body {
   .cups-math { font-size: 22px; margin: 0; }
   .cups-row img { width: 34px; height: 34px; }
   .cups-mini img { width: 30px; height: 30px; }
-  .menu-cup { font-size: 14px; padding: 1px 6px; }
-  .menu-cup img { width: 28px; height: 28px; }
-  .menu-cup.cup-2 img { width: 22px; height: 22px; }
-  .menu-cup.cup-4 img { width: 33px; height: 33px; }
-  .cups-menu { gap: 6px; margin-bottom: 2px; }
   .stand-order { gap: 4px; padding: 2px 0 0; }
   .big-btn { font-size: 18px; padding: 8px 16px; }
   .success { padding: 2px 0; }

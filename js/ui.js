@@ -229,49 +229,27 @@ export function receipt(rows) {
   }).join('') + '</div>';
 }
 
-/* THE ADDITION BRIDGE.
+/* THE ADDITION BRIDGE IS GONE FROM THE CARD, and it must not come back in
+   this shape. It printed "8 + ? = 15" under a receipt that already ended on a
+   "?", and the idea was sound (route a subtraction she is learning through an
+   addition she owns) while the thing on screen was not:
+     - two blanks and one answer box, both blanks painted --mango-deep, and
+       nothing on the card saying they are the same number;
+     - the same three amounts twice in two directions, 15/8/blank down the
+       receipt and 8/blank/15 across the hint directly under it;
+     - the blank in the MIDDLE of the sum. She is fluent at 8 + 7 = ?, and a
+       missing middle number is a different shape that nothing here taught;
+     - "+" and "=" appearing nowhere else on the card, which is otherwise
+       words and dollar amounts end to end.
+   Four directions were drawn at true phone size and cutting it won: one
+   question per card, the same call that removed the stand's cups-times-price
+   step. Any future hint has to be ONE blank, in the card's own register
+   of words and amounts, and it must not restate the question.
 
-   Her addition is fluent and her subtraction is not, so 15 - 8 is routed
-   through a fact she already owns: 8 plus what makes 15. She is not being
-   taught a new method, she is being pointed at one she has.
-
-   What it deliberately is NOT: a count-back, a number line, a row of dots, a
-   ten-frame, a partition diagram. Every one of those is a thing she can count
-   on, and counting is the exact habit this game exists to route around. The
-   bridge is numerals only, one line, and it never moves.
-
-   It fades PER FACT, which is why its stage lives on the fact record and not
-   on the tier: she can own 15 - 8 cold while 13 - 6 still wants the prompt.
-     0 cold, on screen while she solves
-     1 warm, appears only after a miss
-     2 hot, gone
-   The subtraction is always the question. The bridge is only ever underneath
-   it, or she ends up fluent at addition problems and no further forward.
-
-   teach is the one-time sentence, gated by the bridgeTaught flag like every
-   other teaching moment in this game: notation she has never been shown is
-   not self-explanatory, and saying it every time turns help into noise. */
-/* The landscape-phone tier drops the bridge's teaching sentence. That is a
-   measurement, not taste: at 393px of total height the sentence cost 53px of
-   overflow and put the checkmark 19px past the fold, and a card she cannot
-   submit is worse than a card that explains less.
-
-   The flag is NOT burned when the sentence is dropped, so her one showing
-   survives to the next portrait or iPad card. Same discipline as standIntro,
-   whose flag is set on the button rather than on render for the same reason:
-   a single teaching moment must not be spent on a screen that never showed
-   it. */
-export function bridgeTeachable() {
-  return !window.matchMedia('(max-height: 460px)').matches;
-}
-
-export function bridge(m, s, teach) {
-  return '<div class="bridge">'
-    + (teach ? `<span class="bridge-cap">${s} and how many more make ${m}?
-        You know this one!</span>` : '')
-    + `<span class="bridge-sum">${s} + <b class="bridge-q">?</b> = ${m}</span>`
-    + '</div>';
-}
+   What survives, deliberately: the per-fact `bridge` counter in engine.js. It
+   no longer gates anything on screen; it is the record of whether a fact has
+   stopped needing support, and it still feeds the shopping steer's ranking
+   and the parent grid's "knows it" band. */
 
 /* Greedy whole-dollar bill decomposition. NO COINS exist in this game.
    Module-private: the receipt above is the only fan left, so exporting this
